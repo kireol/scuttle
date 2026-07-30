@@ -21,7 +21,11 @@ end sub
 
 sub fetchItems()
     m.status.text = "Loading review items..."
-    if m.thumbTask <> invalid then m.thumbTask.quit = true
+    if m.thumbTask <> invalid
+        m.thumbTask.UnobserveFieldScoped("result")
+        m.thumbTask.UnobserveFieldScoped("newToken")
+        m.thumbTask.quit = true
+    end if
     t = CreateObject("roSGNode", "ApiTask")
     t.input = { server: m.top.server, path: "/api/review?limit=50&severity=" + m.severity, method: "GET", body: "", savePath: "", context: invalid }
     t.ObserveFieldScoped("output", "onItems")
@@ -84,9 +88,14 @@ sub onItems(ev as object)
         tt.server = m.top.server
         tt.items = thumbJobs
         tt.ObserveFieldScoped("result", "onThumb")
+        tt.ObserveFieldScoped("newToken", "onThumbToken")
         tt.control = "RUN"
         m.thumbTask = tt
     end if
+end sub
+
+sub onThumbToken(ev as object)
+    persistToken(ev.GetData())
 end sub
 
 sub onThumb(ev as object)
