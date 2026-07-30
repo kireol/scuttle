@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="EventTileData" extends="ContentNode">
+    <interface>
+        <field id="eventId" type="string" value="" />
+        <field id="thumbPath" type="string" value="" />
+        <field id="caption" type="string" value="" />
+        <field id="subCaption" type="string" value="" />
+        <field id="hasClip" type="boolean" value="false" />
+    </interface>
+</component>

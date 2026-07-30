@@ -110,3 +110,17 @@ Run: `./deploy.sh`, then on the TV:
 Bearer-vs-HttpCookies fallback note (brief Step 1): `VodPlayerScreen.brs`'s `authHeaderStrings()` sends the Frigate JWT as `Authorization: Bearer <token>` via the content node's `HttpHeaders` field, as written in the brief. Whether the Roku video player actually honors a Bearer `Authorization` header on HLS/MP4 segment requests (vs. silently dropping it, causing 401s against a frigate-auth server) can only be determined on a real device. If checklist item 4 above 401s, switch the `else if s.authType = "frigate" and s.token <> ""` branch in `authHeaderStrings()` to send the token as a cookie instead — e.g. `content.HttpCookies = ["frigate_token=" + s.token]` — and re-run item 4 to confirm playback succeeds.
 
 Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
+
+## Task 10
+
+The following on-device verification steps were skipped (no Roku device available):
+
+Run: `./deploy.sh`, then on the TV:
+
+1. Home → Explore shows a grid of recent tracked objects with thumbnails, label, camera, local time.
+2. Up to chip bar; OK cycles Camera/Label/When values; grid refetches each time; combinations work (e.g. person + one camera + 7d).
+3. OK on an event plays its clip (MP4); seek works; Back returns with filters intact.
+4. An event without a clip shows "This event has no clip" instead of erroring.
+5. Works on both servers (auth and no-auth).
+
+Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
