@@ -124,3 +124,17 @@ Run: `./deploy.sh`, then on the TV:
 5. Works on both servers (auth and no-auth).
 
 Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
+
+## Task 11
+
+The following on-device verification steps were skipped (no Roku device available):
+
+Run: `./deploy.sh`, then on the TV:
+
+1. Home → Recordings lists cameras; OK loads days (only days that have recordings).
+2. OK on a day lists its hours in local time; OK on an hour starts playback of that hour.
+3. Left/Right seek ±30 s inside the hour; when an hour finishes, the next hour starts automatically; after the last hour the player closes.
+4. Works on a frigate-auth server (VOD requests carry auth).
+5. A camera with retention disabled shows "No recordings summary"/0 days, no crash.
+
+Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
