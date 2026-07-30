@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ReviewScreen" extends="Group">
+    <interface>
+        <field id="closeMe" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" />
+        <field id="server" type="assocarray" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/screens/ReviewScreen.brs" />
+    <script type="text/brightscript" uri="pkg:/source/ServerStore.brs" />
+    <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
+    <children>
+        <Label id="title" text="Review" translation="[120, 50]" color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />
+        <Label id="filterLabel" translation="[400, 58]" color="0x2BB3C0FF" text="Showing: Alerts  (press * to toggle)" />
+        <MarkupGrid id="list" translation="[120, 130]" itemComponentName="ReviewRow"
+                    itemSize="[1700, 130]" itemSpacing="[0, 12]" numColumns="1" numRows="6"
+                    drawFocusFeedback="false" />
+        <Label id="status" translation="[120, 1010]" color="0x8A959CFF" text="" width="1700" />
+    </children>
+</component>

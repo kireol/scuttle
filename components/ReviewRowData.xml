@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ReviewRowData" extends="ContentNode">
+    <interface>
+        <field id="reviewId" type="string" value="" />
+        <field id="camera" type="string" value="" />
+        <field id="caption" type="string" value="" />
+        <field id="thumbPath" type="string" value="" />
+        <field id="startTime" type="float" value="0" />
+        <field id="endTime" type="float" value="0" />
+    </interface>
+</component>
