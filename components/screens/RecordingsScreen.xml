@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="RecordingsScreen" extends="Group">
+    <interface>
+        <field id="closeMe" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" />
+        <field id="server" type="assocarray" />
+        <field id="cameras" type="array" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/screens/RecordingsScreen.brs" />
+    <script type="text/brightscript" uri="pkg:/source/ServerStore.brs" />
+    <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
+    <children>
+        <Label id="title" text="Recordings" translation="[120, 50]" color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />
+        <Label text="Camera" translation="[120, 130]" color="0x8A959CFF" />
+        <Label text="Day" translation="[720, 130]" color="0x8A959CFF" />
+        <Label text="Hour" translation="[1320, 130]" color="0x8A959CFF" />
+        <LabelList id="camList" translation="[120, 180]" itemSize="[540, 56]" numRows="12"
+                   color="0xE0E6EAFF" focusedColor="0x10545CFF" />
+        <LabelList id="dayList" translation="[720, 180]" itemSize="[540, 56]" numRows="12"
+                   color="0xE0E6EAFF" focusedColor="0x10545CFF" />
+        <LabelList id="hourList" translation="[1320, 180]" itemSize="[400, 56]" numRows="12"
+                   color="0xE0E6EAFF" focusedColor="0x10545CFF" />
+        <Label id="status" translation="[120, 1010]" color="0x8A959CFF" text="" width="1700" />
+    </children>
+</component>

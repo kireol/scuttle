@@ -196,6 +196,7 @@ sub openMenuItem()
         return
     end if
     if screenName <> "ServerListScreen" then node.server = m.server
+    if screenName = "RecordingsScreen" then node.cameras = m.cameras
     m.top.GetScene().CallFunc("pushScreen", node)
 end sub
 
