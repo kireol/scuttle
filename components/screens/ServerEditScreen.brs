@@ -136,7 +136,23 @@ sub onTestResult(ev as object)
             end for
             version = ""
             if cfg.version <> invalid then version = " v" + cfg.version
-            m.status.text = "OK" + version + " — " + StrI(names.Count()).Trim() + " cameras found"
+            okMsg = "OK" + version + " — " + StrI(names.Count()).Trim() + " cameras found"
+            m.status.text = okMsg
+            ' Detect Frigate versions older than 0.14 (string like "0.16.1-abc"); guard
+            ' defensively so a missing/odd version string just keeps the OK message.
+            if cfg.version <> invalid and GetInterface(cfg.version, "ifString") <> invalid
+                verStr = cfg.version
+                dashPos = Instr(1, verStr, "-")
+                if dashPos > 0 then verStr = Left(verStr, dashPos - 1)
+                verParts = verStr.Split(".")
+                if verParts.Count() >= 2
+                    majorStr = verParts[0]
+                    minorStr = verParts[1]
+                    if majorStr = "0" and Val(minorStr) < 14
+                        m.status.text = "Frigate version too old (needs 0.14+): v" + cfg.version
+                    end if
+                end if
+            end if
         else
             m.status.text = "Connected, but response is not a Frigate config"
         end if

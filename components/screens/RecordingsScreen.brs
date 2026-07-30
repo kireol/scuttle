@@ -127,12 +127,14 @@ sub onHourSelect()
     for i = 0 to hours.Count() - 1
         if hours[i] = selected then startAt = i
     end for
+    srv = ServerStore_GetById(m.top.server.id)
+    if srv = invalid then srv = m.top.server
     for i = startAt to hours.Count() - 1
-        url = Frigate_VodHourUrl(m.top.server, ym, dd, hours[i], m.camera, tz)
+        url = Frigate_VodHourUrl(srv, ym, dd, hours[i], m.camera, tz)
         playlist.Push({ url: url, title: m.camera + " — " + d.day + " " + hourLabel(hours[i]), format: "hls" })
     end for
     player = CreateObject("roSGNode", "VodPlayerScreen")
-    player.server = m.top.server
+    player.server = srv
     player.playlist = playlist
     player.startIndex = 0
     m.top.GetScene().CallFunc("pushScreen", player)

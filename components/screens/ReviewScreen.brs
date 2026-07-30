@@ -21,6 +21,7 @@ end sub
 
 sub fetchItems()
     m.status.text = "Loading review items..."
+    if m.pendingTask <> invalid then m.pendingTask.UnobserveFieldScoped("output")
     if m.thumbTask <> invalid
         m.thumbTask.UnobserveFieldScoped("result")
         m.thumbTask.UnobserveFieldScoped("newToken")
@@ -115,10 +116,11 @@ sub onSelect()
     item = m.items[m.list.itemSelected]
     endTs = item.end_time
     if endTs = invalid then endTs = item.start_time + 60
-    server = m.top.server
-    url = server.baseUrl + "/vod/" + item.camera + "/start/" + StrI(Int(item.start_time)).Trim() + "/end/" + StrI(Int(endTs) + 1).Trim() + "/master.m3u8"
+    srv = ServerStore_GetById(m.top.server.id)
+    if srv = invalid then srv = m.top.server
+    url = srv.baseUrl + "/vod/" + item.camera + "/start/" + StrI(Int(item.start_time)).Trim() + "/end/" + StrI(Int(endTs) + 1).Trim() + "/master.m3u8"
     player = CreateObject("roSGNode", "VodPlayerScreen")
-    player.server = server
+    player.server = srv
     player.playlist = [{ url: url, title: item.camera + " — " + TimeUtil_FormatEpoch(item.start_time), format: "hls" }]
     player.startIndex = 0
     m.top.GetScene().CallFunc("pushScreen", player)

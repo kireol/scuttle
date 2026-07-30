@@ -2,7 +2,7 @@
 <component name="ServerEditScreen" extends="Group">
     <interface>
         <field id="closeMe" type="boolean" value="false" />
-        <field id="wasShown" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" alwaysNotify="true" />
         <field id="serverId" type="string" value="" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/screens/ServerEditScreen.brs" />

@@ -157,3 +157,8 @@ The following on-device verification steps were skipped (no Roku device availabl
 
 Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK). README.md written
 per Task 12 Step 1 (see `README.md`).
+
+## Final review — extra device checks
+
+- Recordings: switch camera, reselect the same day/hour row index — verify the hour list refreshes (observer may not refire on same index).
+- Live player switcher with more than 6 cameras — verify rows beyond the first are reachable and render within the overlay.
