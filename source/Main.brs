@@ -16,8 +16,3 @@ sub Main(args as dynamic)
     end while
 end sub
 
-' Replaced by the real runner in Task 2; needed so RunTests launches compile.
-sub RunAllTests()
-    print "[TESTS START]"
-    print "[TESTS DONE]"
-end sub
