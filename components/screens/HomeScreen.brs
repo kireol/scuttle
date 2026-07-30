@@ -144,6 +144,7 @@ end sub
 sub stopSnapshots()
     if m.snapTask <> invalid
         m.snapTask.UnobserveFieldScoped("result")
+        m.snapTask.UnobserveFieldScoped("newToken")
         m.snapTask.quit = true
         m.snapTask = invalid
     end if
