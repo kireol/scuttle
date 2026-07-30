@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ExploreScreen" extends="Group">
+    <interface>
+        <field id="closeMe" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" />
+        <field id="server" type="assocarray" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/screens/ExploreScreen.brs" />
+    <script type="text/brightscript" uri="pkg:/source/ServerStore.brs" />
+    <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
+    <children>
+        <Label id="title" text="Explore" translation="[120, 50]" color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />
+        <Label id="chips" translation="[420, 58]" color="0x2BB3C0FF" text="" width="1300" />
+        <MarkupGrid id="grid" translation="[120, 130]" itemComponentName="EventTile"
+                    itemSize="[420, 330]" itemSpacing="[24, 24]" numColumns="4" numRows="2"
+                    drawFocusFeedback="false" />
+        <Label id="status" translation="[120, 1010]" color="0x8A959CFF" text="" width="1700" />
+    </children>
+</component>
