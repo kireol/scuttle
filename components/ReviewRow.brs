@@ -1,9 +1,27 @@
+sub init()
+    m.boundContent = invalid
+end sub
+
 sub onContentChange()
     c = m.top.itemContent
     if c = invalid then return
-    if c.thumbPath <> "" then m.top.FindNode("thumb").uri = c.thumbPath
+    if m.boundContent <> invalid
+        m.boundContent.UnobserveFieldScoped("thumbPath")
+    end if
+    m.boundContent = c
+    c.ObserveFieldScoped("thumbPath", "onThumbChanged")
     m.top.FindNode("caption").text = c.caption
     m.top.FindNode("sub").text = c.camera
+    applyThumb()
+end sub
+
+sub onThumbChanged()
+    applyThumb()
+end sub
+
+sub applyThumb()
+    c = m.top.itemContent
+    if c <> invalid and c.thumbPath <> "" then m.top.FindNode("thumb").uri = c.thumbPath
 end sub
 
 sub onFocus()
