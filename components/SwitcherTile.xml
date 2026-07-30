@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SwitcherTile" extends="Group">
+    <interface>
+        <field id="itemContent" type="node" onChange="onContentChange" />
+        <field id="focusPercent" type="float" onChange="onFocus" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/SwitcherTile.brs" />
+    <children>
+        <CameraTile id="inner" scale="[0.5, 0.5]" />
+    </children>
+</component>

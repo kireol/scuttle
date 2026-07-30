@@ -75,3 +75,21 @@ Run: `./deploy.sh`, then on the TV:
 7. Let it run 10 minutes — no crash, no visible memory stutter (tmp files are capped by the 2-generation delete).
 
 Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
+
+## Task 8
+
+The following on-device verification steps were skipped (no Roku device available):
+
+Run: `./deploy.sh`, then on the TV:
+
+1. OK on a grid tile → full-screen live video within ~3–6 s; camera name overlays then fades.
+2. Audio is audible on a camera whose go2rtc stream has AAC audio (talk near the camera / check a doorbell).
+3. Left/Right switches to prev/next camera; wraps at both ends.
+4. Down/OK opens the bottom thumbnail strip; Left/Right moves; OK jumps to that camera; Back closes strip without switching.
+5. Back from playback returns to the grid; snapshots still refreshing; enter a different camera — plays.
+6. Point a server entry at a bogus go2rtc port → error panel with URL + codec hint; OK retries; Back exits.
+7. No stutter after 5+ minutes on one camera.
+
+If step 1 fails on all cameras: verify from a PC that `http://<host>:1984/api/stream.m3u8?src=<cam>&mp4` plays in VLC. If VLC works but Roku errors, check the camera's codec (`ffprobe` the stream) — H.265 on an older Roku is the usual cause; fix server-side per the hint text.
+
+Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
