@@ -1,0 +1,7 @@
+{
+    "rootDir": ".",
+    "files": ["manifest", "source/**/*", "components/**/*"],
+    "createPackage": false,
+    "retainStagingDir": false,
+    "diagnosticLevel": "warn"
+}
