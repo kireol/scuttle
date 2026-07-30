@@ -3,5 +3,8 @@
     "files": ["manifest", "source/**/*", "components/**/*"],
     "createPackage": false,
     "retainStagingDir": false,
-    "diagnosticLevel": "warn"
+    "diagnosticLevel": "warn",
+    "diagnosticFilters": [
+        { "src": "components/AppScene.brs", "codes": [1128] }
+    ]
 }
