@@ -34,6 +34,7 @@ end sub
 sub PopScreen()
     if m.screens.Count() <= 1 then return
     screen = m.screens.Pop()
+    if screen.HasField("stopPlayback") then screen.stopPlayback = true
     m.host.RemoveChild(screen)
     top = m.screens[m.screens.Count() - 1]
     top.visible = true

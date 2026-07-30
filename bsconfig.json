@@ -3,8 +3,5 @@
     "files": ["manifest", "source/**/*", "components/**/*"],
     "createPackage": false,
     "retainStagingDir": false,
-    "diagnosticLevel": "warn",
-    "diagnosticFilters": [
-        { "src": "components/screens/HomeScreen.brs", "codes": [1128] }
-    ]
+    "diagnosticLevel": "warn"
 }
