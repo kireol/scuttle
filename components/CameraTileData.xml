@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="CameraTileData" extends="ContentNode">
+    <interface>
+        <field id="cameraName" type="string" value="" />
+        <field id="snapPath" type="string" value="" />
+        <field id="offline" type="boolean" value="false" />
+    </interface>
+</component>
