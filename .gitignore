@@ -1,2 +1,5 @@
+.env
+out/
+__pycache__/
 .superpowers/
 node_modules/
