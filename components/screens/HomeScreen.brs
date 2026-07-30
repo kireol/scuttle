@@ -31,6 +31,7 @@ sub reloadServers()
     m.servers = ServerStore_Load()
     if m.servers.Count() = 0
         renderTabsEmpty()
+        m.grid.content = CreateObject("roSGNode", "ContentNode")
         if not m.redirectedToSettings
             m.redirectedToSettings = true
             m.top.GetScene().CallFunc("pushScreen", CreateObject("roSGNode", "ServerListScreen"))
@@ -210,6 +211,10 @@ sub onTileSelected()
 end sub
 
 sub openMenuItem()
+    if m.servers.Count() = 0 and m.menuItems[m.menuIdx] <> "Settings"
+        m.status.text = "Add a server first (Settings)"
+        return
+    end if
     name = m.menuItems[m.menuIdx]
     screenName = ""
     if name = "Review" then screenName = "ReviewScreen"
