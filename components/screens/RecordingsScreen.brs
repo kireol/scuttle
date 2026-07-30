@@ -82,10 +82,18 @@ sub onDaySelect()
     m.hourList.SetFocus(true)
 end sub
 
+' Frigate may return hour as "07" (string) or 7 (number); normalize safely
+function HourToInt(v as dynamic) as integer
+    if v = invalid then return 0
+    if GetInterface(v, "ifString") <> invalid then return Int(Val(v))
+    if GetInterface(v, "ifInt") <> invalid then return v
+    if GetInterface(v, "ifFloat") <> invalid or GetInterface(v, "ifDouble") <> invalid then return Int(v)
+    return 0
+end function
+
 function hourLabel(hourVal as dynamic) as string
-    h = Val(Str(hourVal).Trim())
+    hr = HourToInt(hourVal)
     ampm = "AM"
-    hr = h
     if hr >= 12 then ampm = "PM"
     if hr = 0 then hr = 12
     if hr > 12 then hr = hr - 12
@@ -93,7 +101,7 @@ function hourLabel(hourVal as dynamic) as string
 end function
 
 function pad2(v as dynamic) as string
-    s = Str(Val(Str(v).Trim())).Trim()
+    s = StrI(HourToInt(v)).Trim()
     if Len(s) = 1 then s = "0" + s
     return s
 end function
