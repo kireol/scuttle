@@ -175,9 +175,11 @@ sub onSelect()
         m.status.text = "This event has no clip"
         return
     end if
+    srv = ServerStore_GetById(m.top.server.id)
+    if srv = invalid then srv = m.top.server
     player = CreateObject("roSGNode", "VodPlayerScreen")
-    player.server = m.top.server
-    player.playlist = [{ url: m.top.server.baseUrl + Frigate_EventClipPath(item.id), title: item.label + " — " + item.camera, format: "mp4" }]
+    player.server = srv
+    player.playlist = [{ url: srv.baseUrl + Frigate_EventClipPath(item.id), title: item.label + " — " + item.camera, format: "mp4" }]
     player.startIndex = 0
     m.top.GetScene().CallFunc("pushScreen", player)
 end sub

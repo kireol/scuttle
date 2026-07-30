@@ -5,6 +5,7 @@ sub init()
     m.status = m.top.FindNode("status")
     m.grid.ObserveFieldScoped("itemSelected", "onTileSelected")
     m.top.ObserveField("wasShown", "onShown")
+    m.top.ObserveField("visible", "onVisibleChange")
 
     m.menuItems = ["Review", "Explore", "Recordings", "Settings"]
     m.focusZone = "grid"   ' "tabs" | "menu" | "grid"
@@ -14,18 +15,32 @@ sub init()
     m.cameras = []
     m.snapTask = invalid
     m.pendingTask = invalid
-    reloadServers()
+    m.redirectedToSettings = false
 end sub
 
 sub onShown()
     reloadServers()
 end sub
 
+sub onVisibleChange()
+    if not m.top.visible then stopSnapshots()
+end sub
+
 sub reloadServers()
     stopSnapshots()
     m.servers = ServerStore_Load()
     if m.servers.Count() = 0
-        m.top.GetScene().CallFunc("pushScreen", CreateObject("roSGNode", "ServerListScreen"))
+        renderTabsEmpty()
+        if not m.redirectedToSettings
+            m.redirectedToSettings = true
+            m.top.GetScene().CallFunc("pushScreen", CreateObject("roSGNode", "ServerListScreen"))
+        else
+            m.status.text = "No servers configured — select Settings to add one"
+            m.focusZone = "menu"
+            m.menuIdx = 3   ' Settings
+            m.top.SetFocus(true)
+            renderMenu()
+        end if
         return
     end if
     if m.tabIdx >= m.servers.Count() then m.tabIdx = 0
@@ -33,6 +48,15 @@ sub reloadServers()
     renderTabs()
     renderMenu()
     fetchConfig()
+end sub
+
+sub renderTabsEmpty()
+    while m.tabRow.GetChildCount() > 0
+        m.tabRow.RemoveChildIndex(0)
+    end while
+    while m.menuRow.GetChildCount() > 0
+        m.menuRow.RemoveChildIndex(0)
+    end while
 end sub
 
 sub renderTabs()
@@ -75,8 +99,9 @@ end sub
 
 sub fetchConfig()
     m.status.text = "Loading cameras from " + m.server.name + " ..."
+    if m.pendingTask <> invalid then m.pendingTask.UnobserveFieldScoped("output")
     t = CreateObject("roSGNode", "ApiTask")
-    t.input = { server: m.server, path: "/api/config", method: "GET", body: "", savePath: "", context: invalid }
+    t.input = { server: m.server, path: "/api/config", method: "GET", body: "", savePath: "", context: m.server.id }
     t.ObserveFieldScoped("output", "onConfig")
     t.control = "RUN"
     m.pendingTask = t
@@ -84,6 +109,7 @@ end sub
 
 sub onConfig(ev as object)
     out = ev.GetData()
+    if out.context <> invalid and out.context <> m.server.id then return
     m.pendingTask = invalid
     persistToken(out.newToken)
     if not out.ok

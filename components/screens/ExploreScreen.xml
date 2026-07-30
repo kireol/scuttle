@@ -2,7 +2,7 @@
 <component name="ExploreScreen" extends="Group">
     <interface>
         <field id="closeMe" type="boolean" value="false" />
-        <field id="wasShown" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" alwaysNotify="true" />
         <field id="server" type="assocarray" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/screens/ExploreScreen.brs" />

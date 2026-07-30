@@ -2,7 +2,7 @@
 <component name="LivePlayerScreen" extends="Group">
     <interface>
         <field id="closeMe" type="boolean" value="false" />
-        <field id="wasShown" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" alwaysNotify="true" />
         <field id="server" type="assocarray" />
         <field id="cameras" type="array" />
         <field id="startIndex" type="integer" value="0" />

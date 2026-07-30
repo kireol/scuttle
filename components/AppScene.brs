@@ -1,20 +1,11 @@
 sub init()
     m.host = m.top.FindNode("screenHost")
     m.screens = []
-    m.top.ObserveField("wasShown", "onSceneShown")
     ShowFirstScreen()
 end sub
 
 sub ShowFirstScreen()
-    servers = ServerStore_Load()
-    if servers.Count() = 0
-        DoPushScreen(CreateObject("roSGNode", "ServerListScreen"))
-    else
-        DoPushScreen(CreateObject("roSGNode", "HomeScreen"))
-    end if
-end sub
-
-sub onSceneShown()
+    DoPushScreen(CreateObject("roSGNode", "HomeScreen"))
 end sub
 
 ' Renamed from PushScreen: BrightScript identifiers are case-insensitive, so this

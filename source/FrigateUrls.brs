@@ -44,6 +44,7 @@ function Frigate_ParseTokenFromSetCookie(setCookieValue as string) as string
     return rest.Trim()
 end function
 
+' TASK-THREAD ONLY: creates roUrlTransfer, which crashes on the SceneGraph render thread — use the _Render copies in screens
 function Frigate_LiveHlsUrl(server as object, cameraName as string) as string
     host = Frigate_HostFromUrl(server.baseUrl)
     return "http://" + host + ":" + StrI(server.go2rtcPort).Trim() + "/api/stream.m3u8?src=" + Frigate_UrlEncode(cameraName) + "&mp4"
@@ -72,6 +73,7 @@ function Frigate_VodHourUrl(server as object, yearMonth as string, day as string
     return server.baseUrl + "/vod/" + yearMonth + "/" + day + "/" + hour + "/" + cameraName + "/" + tzSafe + "/master.m3u8"
 end function
 
+' TASK-THREAD ONLY: creates roUrlTransfer, which crashes on the SceneGraph render thread — use the _Render copies in screens
 function Frigate_UrlEncode(s as string) as string
     x = CreateObject("roUrlTransfer")
     return x.Escape(s)
