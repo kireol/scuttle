@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="VodPlayerScreen" extends="Group">
+    <interface>
+        <field id="closeMe" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" />
+        <field id="server" type="assocarray" />
+        <field id="playlist" type="array" />
+        <field id="startIndex" type="integer" value="0" />
+        <field id="stopPlayback" type="boolean" value="false" onChange="onStopPlayback" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/screens/VodPlayerScreen.brs" />
+    <children>
+        <Video id="video" width="1920" height="1080" />
+        <Label id="titleLabel" translation="[60, 40]" color="0xFFFFFFFF"
+               font="font:LargeBoldSystemFont" visible="false" />
+        <Group id="errorPanel" visible="false">
+            <Rectangle width="1920" height="1080" color="0x101418E0" />
+            <Label id="errorTitle" text="Playback failed" translation="[660, 420]"
+                   color="0xFF6B6BFF" font="font:LargeBoldSystemFont" />
+            <Label id="errorDetail" translation="[400, 490]" width="1120" wrap="true" color="0xE0E6EAFF" />
+            <Label id="errorHint" translation="[400, 620]" width="1120" wrap="true" color="0x8A959CFF"
+                   text="OK to retry, Back to exit. If this recording exists in the Frigate web UI but fails here, the recording codec may be unsupported (Roku needs H.264 + AAC)." />
+        </Group>
+        <Timer id="nameTimer" duration="3" repeat="false" />
+    </children>
+</component>

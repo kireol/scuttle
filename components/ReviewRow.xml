@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ReviewRow" extends="Group">
+    <interface>
+        <field id="itemContent" type="node" onChange="onContentChange" />
+        <field id="focusPercent" type="float" onChange="onFocus" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/ReviewRow.brs" />
+    <children>
+        <Rectangle id="bg" width="1700" height="130" color="0x1A2228FF" />
+        <Poster id="thumb" width="200" height="112" translation="[10, 9]" loadDisplayMode="scaleToZoom" />
+        <Label id="caption" translation="[230, 20]" color="0xE0E6EAFF" font="font:MediumBoldSystemFont" width="1400" />
+        <Label id="sub" translation="[230, 70]" color="0x8A959CFF" width="1400" />
+    </children>
+</component>

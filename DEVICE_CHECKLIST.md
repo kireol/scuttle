@@ -93,3 +93,20 @@ Run: `./deploy.sh`, then on the TV:
 If step 1 fails on all cameras: verify from a PC that `http://<host>:1984/api/stream.m3u8?src=<cam>&mp4` plays in VLC. If VLC works but Roku errors, check the camera's codec (`ffprobe` the stream) — H.265 on an older Roku is the usual cause; fix server-side per the hint text.
 
 Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
+
+## Task 9
+
+The following on-device verification steps were skipped (no Roku device available):
+
+Run: `./deploy.sh`, then on the TV:
+
+1. Home → Review lists recent alerts with thumbnails, labels, and local times, newest first.
+2. `*` toggles to Detections and back; list refetches.
+3. OK on an item plays the recording of that segment; audio present if recorded; Left/Right seek ±30 s.
+4. On a frigate-auth server: playback works (Bearer over `HttpHeaders`). If it 401s, apply the documented `HttpCookies` fallback in VodPlayerScreen and re-verify.
+5. Back returns to the list, then to Home.
+6. A server with no review items shows "0 items", no crash.
+
+Bearer-vs-HttpCookies fallback note (brief Step 1): `VodPlayerScreen.brs`'s `authHeaderStrings()` sends the Frigate JWT as `Authorization: Bearer <token>` via the content node's `HttpHeaders` field, as written in the brief. Whether the Roku video player actually honors a Bearer `Authorization` header on HLS/MP4 segment requests (vs. silently dropping it, causing 401s against a frigate-auth server) can only be determined on a real device. If checklist item 4 above 401s, switch the `else if s.authType = "frigate" and s.token <> ""` branch in `authHeaderStrings()` to send the token as a cookie instead — e.g. `content.HttpCookies = ["frigate_token=" + s.token]` — and re-run item 4 to confirm playback succeeds.
+
+Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
