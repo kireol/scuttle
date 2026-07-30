@@ -72,8 +72,12 @@ edge cases are rare and fixable in Frigate config.
   (pre-0.14 warning), `/api/<camera>/latest.jpg` (snapshots), `/api/review` (review
   items), `/api/events` + `/api/events/<id>/thumbnail.jpg` (Explore),
   `/api/events/<id>/clip.mp4` (Explore playback), `/vod/...` HLS (recorded playback),
-  go2rtc HLS `stream.m3u8?src=<camera>` for live (exact proxy path verified against
-  Frigate docs during implementation).
+  go2rtc HLS `stream.m3u8?src=<camera>` for live. Verified against Frigate source:
+  Frigate's nginx does NOT proxy go2rtc's HLS endpoint through port 8971 (only the
+  MSE/WebRTC websocket paths), so live HLS is fetched directly from go2rtc's own HTTP
+  port — `http://<host>:1984/api/stream.m3u8?src=<camera>&mp4` — and each server config
+  gains a `go2rtcPort` field (default 1984). Frigate auth accepts
+  `Authorization: Bearer <JWT>`, which the app uses instead of cookies.
 - **Snapshots:** a Task downloads authenticated JPEGs to `tmp:/` and tiles point at local
   files (Poster can't send headers). One rotating fetch loop covers only on-screen tiles.
 
