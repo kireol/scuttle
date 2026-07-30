@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="CameraTile" extends="Group">
+    <interface>
+        <field id="itemContent" type="node" onChange="onContentChange" />
+        <field id="focusPercent" type="float" onChange="onFocus" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/CameraTile.brs" />
+    <children>
+        <Rectangle id="frame" width="580" height="362" color="0x1A2228FF" />
+        <Poster id="snap" width="572" height="322" translation="[4, 4]" loadDisplayMode="scaleToFit" />
+        <Label id="name" translation="[12, 330]" color="0xE0E6EAFF" font="font:MediumBoldSystemFont" />
+        <Label id="badge" text="offline" translation="[480, 330]" color="0xFF6B6BFF" visible="false" />
+        <Rectangle id="focusRing" width="580" height="362" color="0x00000000" visible="false">
+            <Rectangle width="580" height="4" color="0x2BB3C0FF" />
+            <Rectangle width="580" height="4" translation="[0, 358]" color="0x2BB3C0FF" />
+            <Rectangle width="4" height="362" color="0x2BB3C0FF" />
+            <Rectangle width="4" height="362" translation="[576, 0]" color="0x2BB3C0FF" />
+        </Rectangle>
+    </children>
+</component>

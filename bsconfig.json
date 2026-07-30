@@ -5,6 +5,6 @@
     "retainStagingDir": false,
     "diagnosticLevel": "warn",
     "diagnosticFilters": [
-        { "src": "components/AppScene.brs", "codes": [1128] }
+        { "src": "components/screens/HomeScreen.brs", "codes": [1128] }
     ]
 }

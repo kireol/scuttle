@@ -10,12 +10,7 @@ sub ShowFirstScreen()
     if servers.Count() = 0
         DoPushScreen(CreateObject("roSGNode", "ServerListScreen"))
     else
-        ' HomeScreen exists from Task 7 onward; until then ServerListScreen is home
-        if CreateObject("roSGNode", "HomeScreen") <> invalid
-            DoPushScreen(CreateObject("roSGNode", "HomeScreen"))
-        else
-            DoPushScreen(CreateObject("roSGNode", "ServerListScreen"))
-        end if
+        DoPushScreen(CreateObject("roSGNode", "HomeScreen"))
     end if
 end sub
 
