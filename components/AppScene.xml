@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="AppScene" extends="Scene">
+    <script type="text/brightscript" uri="pkg:/components/AppScene.brs" />
+    <children>
+        <Rectangle id="background" width="1920" height="1080" color="0x101418FF" />
+        <Label id="placeholder" text="Frigate for Roku — skeleton OK"
+               translation="[760, 520]" color="0xE0E6EAFF" />
+    </children>
+</component>
