@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ServerListScreen" extends="Group">
+    <interface>
+        <field id="closeMe" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/screens/ServerListScreen.brs" />
+    <script type="text/brightscript" uri="pkg:/source/ServerStore.brs" />
+    <children>
+        <Label id="title" text="Frigate Servers" translation="[120, 60]"
+               color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />
+        <Label id="hint" text="OK: edit   *: not used   Back: return"
+               translation="[120, 130]" color="0x8A959CFF" />
+        <LabelList id="list" translation="[120, 190]" itemSize="[800, 64]"
+                   numRows="10" focusBitmapUri="" color="0xE0E6EAFF" focusedColor="0x10545CFF" />
+    </children>
+</component>

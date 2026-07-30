@@ -41,3 +41,21 @@ The following on-device verification steps were skipped (no Roku device availabl
 Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
 
 Functional ApiTask verification (auth, re-login, sync HTTP requests) happens in Task 6's Test Connection checklist.
+
+## Task 6
+
+The following on-device verification steps were skipped (no Roku device available):
+
+Run: `./deploy.sh`, then on the TV:
+
+1. Fresh install (no servers) opens Server list with only "+ Add Server".
+2. Add a server: enter name, URL, auth settings for a REAL Frigate server on your LAN.
+3. Test Connection with correct credentials → "OK v0.16.x — N cameras found".
+4. Test Connection with wrong password (frigate auth) → "Auth rejected (401)".
+5. Test Connection with wrong IP → "Unreachable: ..." within ~15 s.
+6. Save; relaunch the channel (Home, reopen) → server persists.
+7. Edit → Delete Server → list is empty again. Re-add and save for later tasks.
+
+Expected: all 7 pass. Also confirms Task 5's ApiTask works, including Frigate-auth login (check the server's registry entry got a token by re-entering edit — Test Connection after save should succeed without re-login).
+
+Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ServerEditScreen" extends="Group">
+    <interface>
+        <field id="closeMe" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" />
+        <field id="serverId" type="string" value="" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/screens/ServerEditScreen.brs" />
+    <script type="text/brightscript" uri="pkg:/source/ServerStore.brs" />
+    <children>
+        <Label id="title" text="Edit Server" translation="[120, 60]"
+               color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />
+        <LabelList id="list" translation="[120, 160]" itemSize="[1000, 60]"
+                   numRows="12" color="0xE0E6EAFF" focusedColor="0x10545CFF" />
+        <Label id="status" translation="[120, 920]" color="0x8A959CFF" text="" width="1400" />
+    </children>
+</component>
