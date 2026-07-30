@@ -1,5 +1,12 @@
 # Device Verification Checklist
 
+This file is the full on-device verification pass for Frigate for Roku. No physical Roku was
+available during development, so every task below records the manual steps that were skipped
+and must be run once a device is available. Work through the sections **in order, top to
+bottom** (Task 1 through Task 12) on a real Roku, using `./deploy.sh` (and `./deploy.sh --test`
+where noted) to install the channel. Treat any failed step as a bug to fix before considering the
+app done.
+
 ## Task 1
 
 The following on-device verification steps were skipped (no Roku device available):
@@ -138,3 +145,15 @@ Run: `./deploy.sh`, then on the TV:
 5. A camera with retention disabled shows "No recordings summary"/0 days, no crash.
 
 Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
+
+## Task 12
+
+The following on-device verification steps were skipped (no Roku device available):
+
+- Run `./deploy.sh --test` (expect `[TESTS DONE]`).
+- Full regression: walk every checklist above, Task 6 through Task 11, once more end to end —
+  on both an authenticated server (Frigate login or HTTP basic) and an unauthenticated server —
+  recording any failure as a bug to fix.
+
+Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK). README.md written
+per Task 12 Step 1 (see `README.md`).
