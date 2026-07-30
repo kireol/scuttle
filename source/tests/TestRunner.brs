@@ -13,6 +13,7 @@ sub RunAllTests()
     r = {passed: 0, failed: 0}
     Test_Sanity(r)
     Test_ServerStore(r)
+    Test_FrigateUrls(r)
     print "passed: "; r.passed; " failed: "; r.failed
     if r.failed > 0
         print "[TESTS FAILED]"
