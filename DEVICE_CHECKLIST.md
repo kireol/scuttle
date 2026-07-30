@@ -15,3 +15,11 @@ The following on-device verification steps were skipped (no Roku device availabl
 - Expected: PASS: math works, [TESTS DONE], exit 0
 
 Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
+
+## Task 3
+
+The following on-device verification steps were skipped (no Roku device available):
+- Run: `./deploy.sh --test`
+- Expected: all Test_ServerStore asserts PASS, [TESTS DONE], exit 0
+
+Validation: BrighterScript compilation checked via `./check.sh` ✓ (CHECK OK)
