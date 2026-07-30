@@ -92,6 +92,7 @@ sub persistToken(newToken as string)
 end sub
 
 sub fetchEvents()
+    if m.pendingTask <> invalid then m.pendingTask.UnobserveFieldScoped("output")
     m.status.text = "Loading events..."
     if m.thumbTask <> invalid
         m.thumbTask.UnobserveFieldScoped("result")
@@ -209,7 +210,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
         fetchEvents()
         return true
     else if key = "down"
-        m.focusZone = "grid" : renderChips() : m.grid.SetFocus(true) : return true
+        if m.grid.content <> invalid and m.grid.content.GetChildCount() > 0
+            m.focusZone = "grid" : renderChips() : m.grid.SetFocus(true)
+        end if
+        return true
     end if
     return false
 end function
