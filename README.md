@@ -189,13 +189,20 @@ and point it at the same streams — MediaMTX is the lightest option:
 
 ```yaml
 # mediamtx.yml — pulls from go2rtc's RTSP, serves spec-compliant HLS
-paths:
-  front_yard:
-    source: rtsp://127.0.0.1:8554/front_yard_roku
-hls: yes
-hlsSegmentCount: 7
+hlsVariant: mpegts       # muxed TS: video AND audio play on Roku (even the
+                         # cameras' 8kHz AAC as-is). fmp4 keeps audio in a
+                         # separate rendition that corrupts Roku's demuxer.
+hlsSegmentCount: 20      # ~40s of runway — Roku loses the live edge on less
 hlsSegmentDuration: 1s
+paths:
+  "~^(.+)$":
+    source: rtsp://127.0.0.1:8554/$G1
+    sourceOnDemand: yes
 ```
+
+Caveat: HEVC camera mains may not play over TS (Roku's HEVC-in-TS support
+is spotty) — the h264 `_roku` restreams are the reliable route and carry
+the audio. No `-ar` resampling is needed with mpegts.
 
 MediaMTX then serves `http://<host>:8888/<stream>/index.m3u8`, which
 Roku's player handles. **The app auto-detects MediaMTX**: on every connect it
