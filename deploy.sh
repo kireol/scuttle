@@ -25,8 +25,10 @@ fi
 if [[ "${1:-}" == "--test" ]]; then
     LOG=out/test.log
     : > "$LOG"
-    # Connect console BEFORE launching so no output is missed
-    ( timeout 40 nc "$ROKU_IP" 8085 > "$LOG" 2>/dev/null || true ) &
+    # Connect console BEFORE launching so no output is missed.
+    # No `timeout` (absent on macOS); the poll loop below bounds the wait and kills nc.
+    # </dev/null so backgrounded nc never reads the terminal (SIGTTIN would suspend it).
+    nc "$ROKU_IP" 8085 > "$LOG" 2>/dev/null </dev/null &
     NC_PID=$!
     sleep 1
     curl -s -o /dev/null -d '' "http://$ROKU_IP:8060/launch/dev?RunTests=true"

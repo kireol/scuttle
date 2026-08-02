@@ -28,6 +28,7 @@ sub execute()
         ok: (res.status >= 200 and res.status < 300),
         status: res.status,
         body: res.body,
+        headersArray: res.headersArray,
         savePath: req.savePath,
         newToken: newToken,
         error: res.error,

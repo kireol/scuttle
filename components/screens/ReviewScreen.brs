@@ -49,7 +49,7 @@ sub onItems(ev as object)
     m.pendingTask = invalid
     persistToken(out.newToken)
     if not out.ok
-        m.status.text = "Failed to load review items (HTTP " + StrI(out.status).Trim() + ")"
+        m.status.text = Frigate_FriendlyError(out.status, out.error)
         return
     end if
     m.items = ParseJson(out.body)
@@ -114,11 +114,14 @@ end sub
 
 sub onSelect()
     item = m.items[m.list.itemSelected]
+    print "[review] select idx="; m.list.itemSelected; " item: "; FormatJson(item)
     endTs = item.end_time
     if endTs = invalid then endTs = item.start_time + 60
     srv = ServerStore_GetById(m.top.server.id)
     if srv = invalid then srv = m.top.server
-    url = srv.baseUrl + "/vod/" + item.camera + "/start/" + StrI(Int(item.start_time)).Trim() + "/end/" + StrI(Int(endTs) + 1).Trim() + "/master.m3u8"
+    ' Frigate_VodRangeUrl keeps LongInteger precision; StrI(Int(epoch)) mangles
+    ' epochs through 32-bit float
+    url = Frigate_VodRangeUrl(srv, item.camera, item.start_time, endTs)
     player = CreateObject("roSGNode", "VodPlayerScreen")
     player.server = srv
     player.playlist = [{ url: url, title: item.camera + " — " + TimeUtil_FormatEpoch(item.start_time), format: "hls" }]
