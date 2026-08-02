@@ -571,13 +571,11 @@ sub onMaster(ev as object)
     ' resolve relative to the master URL's directory
     if Left(mediaUrl, 4) <> "http" then mediaUrl = Frigate_HlsBaseUrl(out.context) + mediaUrl
     print "[live] media playlist: "; mediaUrl
-    ' MediaMTX carries audio as a separate rendition reachable only via the
-    ' master, so hand Roku the master when it declares no HEVC codec (the
-    ' media-playlist workaround is only needed for hvc1-declaring masters)
+    ' Always hand Roku the MEDIA playlist. Handing the master was tried for
+    ' audio (MediaMTX fmp4 keeps audio in a separate rendition) but Roku's
+    ' demuxer corrupts video on that layout — audio must instead come muxed
+    ' into the segments (MediaMTX hlsVariant: mpegts).
     m.playUrl = mediaUrl
-    if isMtxUrl(out.context) and Instr(1, out.body, "hev") = 0 and Instr(1, out.body, "hvc") = 0
-        m.playUrl = out.context
-    end if
     ' Warm the session up before handing it to Roku: a freshly created go2rtc
     ' HLS session has no segments for the first moments, and OS 15.3 treats an
     ' empty media playlist as fatal ("mpr zero length playlist") instead of
