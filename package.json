@@ -6,7 +6,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "validate": "bsc --rootDir . --createPackage false",
+    "test": "./deploy.sh --test"
   },
   "keywords": [],
   "author": "",
