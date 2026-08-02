@@ -10,6 +10,7 @@
         <field id="tag" type="string" value="" />
         <field id="height" type="integer" value="360" />
         <field id="fullUrl" type="string" value="" />
+        <field id="bbox" type="boolean" value="false" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/tasks/SnapshotTask.brs" />
     <script type="text/brightscript" uri="pkg:/source/HttpSync.brs" />

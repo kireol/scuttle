@@ -151,8 +151,11 @@ function Frigate_HlsBaseUrl(url as string) as string
     return u
 end function
 
-function Frigate_SnapshotPath(cameraName as string, height as integer) as string
-    return "/api/" + cameraName + "/latest.jpg?height=" + StrI(height).Trim()
+' bbox draws Frigate's detection bounding boxes onto the JPEG
+function Frigate_SnapshotPath(cameraName as string, height as integer, bbox = false as boolean) as string
+    path = "/api/" + cameraName + "/latest.jpg?height=" + StrI(height).Trim()
+    if bbox then path = path + "&bbox=1"
+    return path
 end function
 
 function Frigate_EventThumbPath(eventId as string) as string

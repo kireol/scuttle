@@ -27,6 +27,7 @@ sub Test_FrigateUrls(r as object)
 
     T("live hls", Frigate_LiveHlsUrl(s, "front_door") = "http://10.0.0.5:1984/api/stream.m3u8?src=front_door&mp4", r)
     T("snapshot path", Frigate_SnapshotPath("front_door", 360) = "/api/front_door/latest.jpg?height=360", r)
+    T("snapshot path bbox", Frigate_SnapshotPath("front_door", 360, true) = "/api/front_door/latest.jpg?height=360&bbox=1", r)
     T("event thumb", Frigate_EventThumbPath("171234.5-abcd") = "/api/events/171234.5-abcd/thumbnail.jpg", r)
     T("event clip", Frigate_EventClipPath("171234.5-abcd") = "/api/events/171234.5-abcd/clip.mp4", r)
     ' # suffix forces double literals: these values overflow float (32-bit) precision

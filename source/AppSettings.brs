@@ -4,6 +4,7 @@ function AppSettings_Load() as object
         gridColumns: 3
         livePortFirst: true
         showClock: true
+        showBoxes: false
         cycleSecs: 10
         lastServerId: ""
         lastGridIdx: 0
