@@ -30,6 +30,8 @@ sub init()
     m.infoText = m.top.FindNode("infoText")
     m.infoBg = m.top.FindNode("infoBg")
     m.playUrl = ""
+    ' advertised feed resolution, parsed from the master playlist
+    m.streamRes = ""
     ' next-camera snapshot prefetch for seamless cycle hops
     m.prefetch = invalid
     m.prefetchTask = invalid
@@ -321,7 +323,7 @@ sub enterSnapshotMode()
     m.errorPanel.visible = false
     m.snapMode = true
     m.snapFails = 0
-    m.modeIcon.text = "●"   ' ▶ = live video; ● = snapshots (■ has no glyph)
+    m.modeIcon.text = "●"   ' ● = snapshots, "LIVE" = video (▶/■ lack glyphs here)
     m.videoCover.visible = true
     m.loadingLabel.text = "Loading..."
     ' skip the label when a fresh prefetched image is already on screen
@@ -571,6 +573,22 @@ sub onMaster(ev as object)
     ' resolve relative to the master URL's directory
     if Left(mediaUrl, 4) <> "http" then mediaUrl = Frigate_HlsBaseUrl(out.context) + mediaUrl
     print "[live] media playlist: "; mediaUrl
+    ' remember the advertised resolution (e.g. RESOLUTION=1280x720) for the
+    ' info overlay; go2rtc masters omit it, MediaMTX/Frigate include it
+    m.streamRes = ""
+    p = Instr(1, out.body, "RESOLUTION=")
+    if p > 0
+        i = p + 11
+        while i <= Len(out.body)
+            c = Mid(out.body, i, 1)
+            if (c >= "0" and c <= "9") or c = "x"
+                m.streamRes = m.streamRes + c
+            else
+                exit while
+            end if
+            i = i + 1
+        end while
+    end if
     ' Always hand Roku the MEDIA playlist. Handing the master was tried for
     ' audio (MediaMTX fmp4 keeps audio in a separate rendition) but Roku's
     ' demuxer corrupts video on that layout — audio must instead come muxed
@@ -826,7 +844,7 @@ sub onVideoState()
         m.watchdog.control = "stop"
         stopWarmTask()
         startFpsPolling()
-        m.modeIcon.text = "▶"
+        m.modeIcon.text = "LIVE"
         ' the winning attempt gets an explicit verdict in the trail
         n = m.attemptLog.Count()
         if n > 0 and Left(m.attemptLog[n - 1], 2) = "> "
@@ -999,6 +1017,9 @@ sub updateInfoPanel()
     end if
     if m.snapMode
         txt = txt + nl + "Mode: snapshot (refreshing stills)"
+        if m.snapFront.bitmapWidth > 0
+            txt = txt + nl + "Snapshot resolution: " + StrI(m.snapFront.bitmapWidth).Trim() + "x" + StrI(m.snapFront.bitmapHeight).Trim()
+        end if
         if m.quietRetry
             txt = txt + nl + "Video: being tried in the background"
         else
@@ -1013,10 +1034,15 @@ sub updateInfoPanel()
         if Instr(1, currentUrl(), "/api/go2rtc/") > 0 then route = "Frigate proxy"
         txt = txt + nl + "Route: " + route
         txt = txt + nl + "State: " + m.video.state
+        ' decoder-reported size when available, else the playlist's advertised one
+        resTxt = ""
         seg = m.video.streamingSegment
         if seg <> invalid and seg.width <> invalid and seg.width > 0
-            txt = txt + nl + "Resolution: " + StrI(seg.width).Trim() + " x " + StrI(seg.height).Trim()
+            resTxt = StrI(seg.width).Trim() + "x" + StrI(seg.height).Trim()
+        else if m.streamRes <> ""
+            resTxt = m.streamRes
         end if
+        if resTxt <> "" then txt = txt + nl + "Resolution: " + resTxt
         if seg <> invalid and seg.segBitrateBps <> invalid and seg.segBitrateBps > 0
             txt = txt + nl + "Stream bitrate: " + fmtBitrate(seg.segBitrateBps)
         end if
