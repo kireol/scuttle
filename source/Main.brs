@@ -3,6 +3,19 @@ sub Main(args as dynamic)
         RunAllTests()
         return
     end if
+    ' cachefs (the settings mirror, see ServerStore.brs) mounts lazily and
+    ' early reads come back empty, which makes the first screens load stale
+    ' registry data — wait for the volume before building the scene
+    fs = CreateObject("roFileSystem")
+    mountWait = CreateObject("roTimespan")
+    while mountWait.TotalMilliseconds() < 3000
+        mounted = false
+        for each vol in fs.GetVolumeList()
+            if vol = "cachefs:" then mounted = true
+        end for
+        if mounted then exit while
+        sleep(100)
+    end while
     screen = CreateObject("roSGScreen")
     port = CreateObject("roMessagePort")
     screen.SetMessagePort(port)

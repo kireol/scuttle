@@ -96,7 +96,7 @@ sub onWeather(ev as object)
         if srv <> invalid
             srv.zipLat = out.lat
             srv.zipLon = out.lon
-            ServerStore_Upsert(srv)
+            ServerStore_Upsert(srv, "geo")
         end if
     end if
 end sub
@@ -395,7 +395,7 @@ sub onConfig(ev as object)
         srv = ServerStore_GetById(m.server.id)
         if srv <> invalid
             srv.cfProxied = cf
-            ServerStore_Upsert(srv)
+            ServerStore_Upsert(srv, "cf")
         end if
     end if
     m.loadedServerId = m.server.id
@@ -437,7 +437,7 @@ sub onMtxProbe(ev as object)
     srv = ServerStore_GetById(m.server.id)
     if srv <> invalid
         srv.mediamtxOk = present
-        ServerStore_Upsert(srv)
+        ServerStore_Upsert(srv, "mtx")
     end if
     ' a newly appeared packager means video may work now — forget the old
     ' downgrade so the next camera open tries video immediately
@@ -505,7 +505,7 @@ sub persistToken(newToken as string)
         srv = ServerStore_GetById(m.server.id)
         if srv <> invalid and srv.token <> newToken
             srv.token = newToken
-            ServerStore_Upsert(srv)
+            ServerStore_Upsert(srv, "tokH")
         end if
         m.server.token = newToken
     end if
