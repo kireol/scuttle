@@ -87,7 +87,17 @@ end sub
 ' ready so the visible image is never blanked mid-load (no flicker)
 sub applySnap()
     c = m.top.itemContent
-    if c = invalid or c.snapPath = "" then return
+    if c = invalid then return
+    if c.snapPath = ""
+        ' freshly (re)bound tile with no image yet — e.g. a server switch.
+        ' MarkupGrid recycles these components, so without this the previous
+        ' server's picture lingers under the new camera's name.
+        m.front.uri = ""
+        m.back.uri = ""
+        m.front.visible = true
+        m.back.visible = false
+        return
+    end if
     if m.front.uri = "" then
         m.front.uri = c.snapPath
     else if c.snapPath <> m.front.uri
