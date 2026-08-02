@@ -29,6 +29,7 @@ sub init()
     m.infoPanel = m.top.FindNode("infoPanel")
     m.infoText = m.top.FindNode("infoText")
     m.placeholder = m.top.FindNode("placeholder")
+    m.videoCover = m.top.FindNode("videoCover")
     m.clockLabel = m.top.FindNode("clock")
     m.clockLabel.ObserveFieldScoped("visible", "updateBottomBar")
     m.clockTimer = m.top.FindNode("clockTimer")
@@ -216,7 +217,8 @@ sub enterSnapshotMode()
     m.snapMode = true
     m.snapFails = 0
     m.modeIcon.text = "■"
-    m.loadingLabel.text = "Loading snapshots ..."
+    m.videoCover.visible = true
+    m.loadingLabel.text = "Loading..."
     m.loadingLabel.visible = true
     startKeepalive()
     ' downgraded here (vs. snapshot by configuration): quietly retry video
@@ -275,6 +277,7 @@ sub leaveSnapshotMode()
     stopKeepalive()
     m.retryTimer.control = "stop"
     m.snapMode = false
+    m.videoCover.visible = false
     m.snapA.visible = false
     m.snapB.visible = false
     m.snapA.uri = ""

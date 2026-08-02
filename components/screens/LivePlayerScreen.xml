@@ -20,6 +20,12 @@
     <script type="text/brightscript" uri="pkg:/source/PrefStore.brs" />
     <children>
         <Video id="video" width="1920" height="1080" />
+        <!-- shown in snapshot mode: hides the (gray) keepalive clip and any
+             cascade attempts on the video plane, and turns letterbox bars
+             around non-16:9 snapshots black. Shifted 2px — full occlusion
+             makes the OS close the keepalive playback (screensaver returns) -->
+        <Rectangle id="videoCover" translation="[2, 0]" width="1920" height="1080"
+                   color="0x000000FF" visible="false" />
         <!-- last grid snapshot, dimmed, shown while the source cascade runs so
              the screen is never black during loading -->
         <Poster id="placeholder" width="1920" height="1080" loadDisplayMode="scaleToFit"
