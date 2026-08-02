@@ -1,10 +1,35 @@
 sub init()
     m.list = m.top.FindNode("list")
     m.list.ObserveFieldScoped("itemSelected", "onSelect")
+    m.list.ObserveFieldScoped("itemFocused", "updateScrollbar")
+    m.scrollTrack = m.top.FindNode("scrollTrack")
+    m.scrollThumb = m.top.FindNode("scrollThumb")
     m.top.ObserveField("wasShown", "onShownList")
     ' version comes from the manifest so this label can never drift from it
     m.top.FindNode("version").text = "v" + CreateObject("roAppInfo").GetVersion()
     refresh()
+end sub
+
+sub updateScrollbar()
+    total = 0
+    if m.list.content <> invalid then total = m.list.content.GetChildCount()
+    vis = 12
+    if total <= vis
+        m.scrollTrack.visible = false
+        m.scrollThumb.visible = false
+        return
+    end if
+    trackH = 768
+    thumbH = Int(trackH * vis / total)
+    if thumbH < 40 then thumbH = 40
+    y = 240
+    if total > 1 and m.list.itemFocused > 0
+        y = 240 + Int((trackH - thumbH) * m.list.itemFocused / (total - 1))
+    end if
+    m.scrollThumb.height = thumbH
+    m.scrollThumb.translation = [1250, y]
+    m.scrollTrack.visible = true
+    m.scrollThumb.visible = true
 end sub
 
 sub onShownList()
@@ -57,6 +82,7 @@ sub refresh()
     m.list.content = content
     if idx > 0 and idx < content.GetChildCount() then m.list.jumpToItem = idx
     m.list.SetFocus(true)
+    updateScrollbar()
 end sub
 
 sub onSelect()

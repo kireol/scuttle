@@ -7,6 +7,10 @@ sub init()
     m.server = ServerStore_NewServer()
     m.pendingTask = invalid
     m.dialog = invalid
+    ' "fields" = normal settings rows; "cams" = the cycle-camera picker
+    m.mode = "fields"
+    m.allCams = []
+    m.camSel = {}
     rebuild()
 end sub
 
@@ -23,9 +27,22 @@ sub loadServer()
 end sub
 
 function rows() as object
+    if m.mode = "cams"
+        picked = [{ key: "camdone", title: "< Done  (nothing checked = all cameras)" }]
+        for each cam in m.allCams
+            mark = "[ ] "
+            if m.camSel.DoesExist(cam) then mark = "[x] "
+            picked.Push({ key: "campick", name: cam, title: mark + cam })
+        end for
+        return picked
+    end if
     authLabel = m.server.authType
     verifyLabel = "off"
     if m.server.verifyTls = true then verifyLabel = "on"
+    cycleLabel = "all"
+    if m.server.cycleCams <> invalid and m.server.cycleCams.Count() > 0
+        cycleLabel = StrI(m.server.cycleCams.Count()).Trim() + " selected"
+    end if
     return [
         { key: "name", title: "Name: " + m.server.name },
         { key: "baseUrl", title: "URL: " + m.server.baseUrl },
@@ -37,6 +54,7 @@ function rows() as object
         { key: "liveMode", title: "Live view: " + m.server.liveMode + "  (OK cycles)" },
         { key: "streamType", title: "Stream type: " + m.server.streamType + "  (OK picks from server)" },
         { key: "verifyTls", title: "Verify TLS certificate: " + verifyLabel + "  (OK toggles)" },
+        { key: "cycleCams", title: "Cycle cameras: " + cycleLabel + "  (OK picks)" },
         { key: "test", title: "▶ Test Connection" },
         { key: "save", title: "✔ Save" },
         { key: "delete", title: "✖ Delete Server" }
@@ -59,6 +77,29 @@ end sub
 sub onSelect()
     row = rows()[m.list.itemSelected]
     print "[edit] selected row: "; row.key; " url="; m.server.baseUrl
+    if row.key = "campick"
+        if m.camSel.DoesExist(row.name)
+            m.camSel.Delete(row.name)
+        else
+            m.camSel[row.name] = true
+        end if
+        rebuild()
+        return
+    else if row.key = "camdone"
+        sel = []
+        for each cam in m.allCams
+            if m.camSel.DoesExist(cam) then sel.Push(cam)
+        end for
+        if sel.Count() = m.allCams.Count() then sel = []   ' everything = all
+        m.server.cycleCams = sel
+        ServerStore_Upsert(m.server)
+        m.mode = "fields"
+        rebuild()
+        return
+    else if row.key = "cycleCams"
+        fetchCamsForPicker()
+        return
+    end if
     if row.key = "authType"
         order = ["none", "basic", "frigate"]
         for i = 0 to 2
@@ -201,6 +242,42 @@ sub onStreamTypeDialog()
     rebuild()
 end sub
 
+' Load the camera list, then switch the list into checkbox-picker mode
+sub fetchCamsForPicker()
+    m.status.text = "Loading cameras ..."
+    t = CreateObject("roSGNode", "ApiTask")
+    t.input = { server: m.server, path: "/api/config", method: "GET", body: "", savePath: "", context: invalid }
+    t.ObserveFieldScoped("output", "onPickerConfig")
+    t.control = "RUN"
+    m.pendingTask = t
+end sub
+
+sub onPickerConfig(ev as object)
+    out = ev.GetData()
+    m.pendingTask = invalid
+    if out.newToken <> "" then m.server.token = out.newToken
+    if not out.ok
+        m.status.text = Frigate_FriendlyError(out.status, out.error)
+        return
+    end if
+    parsed = Frigate_ParseCameraConfig(ParseJson(out.body))
+    if parsed.cameras.Count() = 0
+        m.status.text = "No cameras found on this server"
+        return
+    end if
+    m.status.text = ""
+    m.allCams = parsed.cameras
+    m.camSel = {}
+    if m.server.cycleCams <> invalid
+        for each cam in m.server.cycleCams
+            m.camSel[cam] = true
+        end for
+    end if
+    m.mode = "cams"
+    rebuild()
+    m.list.jumpToItem = 0
+end sub
+
 sub showSavedDialog()
     d = CreateObject("roSGNode", "Dialog")
     d.title = "Server saved"
@@ -278,5 +355,12 @@ sub onTestResult(ev as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "back" and m.mode = "cams"
+        ' leave the picker without committing (Done commits)
+        m.mode = "fields"
+        rebuild()
+        return true
+    end if
     return false
 end function
