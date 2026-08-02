@@ -25,6 +25,10 @@ for ip in $IPS; do
         -F "mysubmit=Install" -F "archive=@out/app.zip" \
         "http://$ip/plugin_install" || true)
     if echo "$RESULT" | grep -qE "Install Success|Identical to previous version"; then
+        # "Identical" installs do not auto-relaunch, and we pressed Home first —
+        # always launch so the TV isn't left on the Roku home screen
+        sleep 2
+        curl -s -o /dev/null -d '' "http://$ip:8060/launch/dev" || true
         echo "$ip: install OK"
     else
         echo "$ip: install FAILED (dev mode off, or wrong password?)"

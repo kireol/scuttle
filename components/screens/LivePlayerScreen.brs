@@ -40,6 +40,13 @@ sub init()
     m.masterTries = 0
     m.warmupTimer = m.top.FindNode("warmupTimer")
     m.warmupTimer.ObserveFieldScoped("fire", "fetchWarmup")
+    ' The startup watchdog retires once playback begins, so a live stream
+    ' that stalls mid-play would otherwise buffer forever with no fallback
+    m.stallTimer = m.top.FindNode("stallTimer")
+    m.stallTimer.ObserveFieldScoped("fire", "onStallTick")
+    m.lastPos = -1
+    m.stallCount = 0
+    m.stallRestarted = false
     m.cycleTimer = m.top.FindNode("cycleTimer")
     m.cycleTimer.ObserveFieldScoped("fire", "onCycleTick")
     ' true while the tiny bundled clip plays under the snapshot posters to
@@ -119,6 +126,8 @@ sub onShown()
         end if
         buildSwitcher()
         startCam()
+        ' * on a home tile lands here with the info overlay requested
+        if m.top.openInfo then toggleInfoPanel()
     end if
     m.top.SetFocus(true)
 end sub
@@ -325,6 +334,37 @@ sub stopKeepalive()
     m.video.control = "stop"
 end sub
 
+' Frozen position after playback started (live edge lost, dead session):
+' restart the same attempt once, cascade if it stalls again
+sub onStallTick()
+    if m.keepalive or m.snapMode
+        m.stallTimer.control = "stop"
+        return
+    end if
+    state = m.video.state
+    if state <> "playing" and state <> "buffering" then return
+    curPos = m.video.position
+    if curPos = m.lastPos
+        m.stallCount = m.stallCount + 1
+    else
+        m.stallCount = 0
+        m.stallRestarted = false
+    end if
+    m.lastPos = curPos
+    if m.stallCount >= 2
+        m.stallCount = 0
+        m.stallTimer.control = "stop"
+        if not m.stallRestarted
+            print "[live] stall: position frozen 20s — restarting attempt"
+            m.stallRestarted = true
+            playCurrent()
+        else
+            print "[live] stall: repeated — advancing"
+            advanceAttempt()
+        end if
+    end if
+end sub
+
 ' Every few minutes while downgraded: retry video from full quality behind
 ' the live snapshots; the user only notices if it works
 sub onRetryTick()
@@ -344,6 +384,7 @@ sub playCurrent()
     m.errorPanel.visible = false
     stopWarmTask()
     stopFpsPolling()
+    m.stallTimer.control = "stop"
     m.video.control = "stop"
     m.masterTries = 0
     fetchMaster()
@@ -650,6 +691,9 @@ sub onVideoState()
         m.watchdog.control = "stop"
         stopWarmTask()
         startFpsPolling()
+        m.lastPos = -1
+        m.stallCount = 0
+        m.stallTimer.control = "start"
         m.loadingLabel.visible = false
         hidePlaceholder()
         if not m.hintShown
@@ -704,6 +748,7 @@ end sub
 
 sub onStopPlayback()
     m.watchdog.control = "stop"
+    m.stallTimer.control = "stop"
     m.cycleTimer.control = "stop"
     m.clockTimer.control = "stop"
     stopWarmTask()

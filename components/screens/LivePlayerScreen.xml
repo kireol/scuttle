@@ -11,6 +11,7 @@
         <field id="liveStreamsSub" type="assocarray" />
         <field id="portFirst" type="boolean" value="true" />
         <field id="cycleMode" type="boolean" value="false" />
+        <field id="openInfo" type="boolean" value="false" />
         <field id="stopPlayback" type="boolean" value="false" onChange="onStopPlayback" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/screens/LivePlayerScreen.brs" />
@@ -75,6 +76,8 @@
         <Timer id="masterRetryTimer" duration="1" repeat="false" />
         <!-- 1s cadence for media-playlist polling while segments accumulate -->
         <Timer id="warmupTimer" duration="1" repeat="false" />
+        <!-- mid-stream stall detector: fires while video should be advancing -->
+        <Timer id="stallTimer" duration="10" repeat="true" />
         <!-- camera cycle dwell; duration set from settings at start -->
         <Timer id="cycleTimer" duration="10" repeat="true" />
     </children>
