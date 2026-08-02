@@ -67,6 +67,8 @@ sub init()
     m.nameTimer = m.top.FindNode("nameTimer")
     m.nameTimer.ObserveFieldScoped("fire", "hideName")
     m.video.ObserveFieldScoped("state", "onVideoState")
+    ' no built-in spinner/UI: video buffers invisibly behind the snapshots
+    m.video.enableUI = false
     m.switchGrid.ObserveFieldScoped("itemSelected", "onSwitchPick")
     m.top.ObserveField("wasShown", "onShown")
     m.idx = 0
@@ -154,22 +156,32 @@ end sub
 
 ' Fresh camera: rebuild the URL attempt chain, starting at the tier the
 ' server has already been downgraded to
+' Snapshots first, always: an instant picture while video sources are tried
+' in the background; the first one to reach "playing" swaps in seamlessly
 sub startCam()
     leaveSnapshotMode()
     m.quietRetry = false
     m.attemptLog = []
     cam = m.top.cameras[m.idx]
     showPlaceholder(cam)
-    if m.top.server.liveMode = "snapshot" or m.serverSnapshot
-        ' snapshots by configuration, or video already proved hopeless for
-        ' this server (this session or recently — see TierStore)
-        enterSnapshotMode()
-        showName(cam)
-        return
+    enterSnapshotMode()
+    showName(cam)
+    if m.top.server.liveMode <> "snapshot" then startBgVideoAttempt()
+end sub
+
+' Background video cascade behind the live snapshots. fromTier -1 = start
+' at the tier this server last worked at; 0 = retry from full quality.
+sub startBgVideoAttempt(fromTier = -1 as integer)
+    m.quietRetry = true
+    stopKeepalive()
+    buildTiers(m.top.cameras[m.idx])
+    if fromTier >= 0
+        m.tierIdx = fromTier
+    else
+        m.tierIdx = m.serverTier
     end if
-    buildTiers(cam)
-    m.tierIdx = m.serverTier
     if m.tierIdx >= m.tiers.Count() then m.tierIdx = m.tiers.Count() - 1
+    if m.tierIdx < 0 then m.tierIdx = 0
     m.attemptIdx = 0
     playCurrent()
 end sub
@@ -202,8 +214,7 @@ sub enterSnapshotMode()
     m.errorPanel.visible = false
     m.snapMode = true
     m.snapFails = 0
-    logAttempt("snapshots")
-    m.loadingLabel.text = "Loading snapshot mode ..."
+    m.loadingLabel.text = "Loading snapshots ..."
     m.loadingLabel.visible = true
     startKeepalive()
     ' downgraded here (vs. snapshot by configuration): quietly retry video
@@ -286,7 +297,8 @@ sub onLiveSnap(ev as object)
         return
     end if
     m.snapFails = 0
-    m.loadingLabel.visible = false
+    ' keep the "Trying video: ..." status line while a background attempt runs
+    if not m.quietRetry then m.loadingLabel.visible = false
     hidePlaceholder()
     if m.snapFront.uri = ""
         m.snapFront.uri = res.path
@@ -369,18 +381,12 @@ sub onStallTick()
     end if
 end sub
 
-' Every few minutes while downgraded: retry video from full quality behind
-' the live snapshots; the user only notices if it works
+' Every few minutes while on snapshots: retry video from full quality
 sub onRetryTick()
     if not m.snapMode or m.quietRetry then return
     if m.top.server.liveMode = "snapshot" then return
-    print "[live] quiet video retry"
-    m.quietRetry = true
-    stopKeepalive()
-    buildTiers(m.top.cameras[m.idx])
-    m.tierIdx = 0
-    m.attemptIdx = 0
-    playCurrent()
+    print "[live] periodic video retry"
+    startBgVideoAttempt(0)
 end sub
 
 sub playCurrent()
@@ -401,13 +407,10 @@ sub playCurrent()
     end if
     m.watchdog.control = "stop"
     m.watchdog.control = "start"
-    if not m.quietRetry
-        tname = ""
-        if m.tierIdx < m.tierNames.Count() then tname = m.tierNames[m.tierIdx]
-        logAttempt(tname + " via " + routeName(currentUrl()))
-        showLoading()
-        showName(cam)
-    end if
+    tname = ""
+    if m.tierIdx < m.tierNames.Count() then tname = m.tierNames[m.tierIdx]
+    logAttempt(tname + " via " + routeName(currentUrl()))
+    showLoading()
 end sub
 
 ' Fetch the master playlist ourselves and hand the Video node the MEDIA
@@ -431,14 +434,14 @@ sub onMasterRetry()
     fetchMaster()
 end sub
 
-' "Loading back_garage_sub (proxy) ..." while a source is being tried
+' Status line while a video source is being tried behind the snapshots
 sub showLoading()
     name = ""
     if m.tierIdx < m.tierNames.Count() then name = m.tierNames[m.tierIdx]
     route = "direct"
     if isMtxUrl(currentUrl()) then route = "mediamtx"
     if Instr(1, currentUrl(), "/api/go2rtc/") > 0 then route = "proxy"
-    m.loadingLabel.text = "Loading " + name + " (" + route + ") ..."
+    m.loadingLabel.text = "Trying video: " + name + " (" + route + ") ..."
     m.loadingLabel.visible = true
     if m.infoPanel.visible then updateInfoPanel()
 end sub
@@ -556,12 +559,15 @@ sub advanceAttempt()
         end if
         playCurrent()
     else if m.quietRetry
-        ' background retry exhausted every source — stay on the snapshots
-        ' the user is already watching and try again next tick
-        print "[live] quiet retry failed; staying in snapshot mode"
+        ' background cascade exhausted every source — stay on the snapshots
+        ' the user is already watching; the retry timer tries again later
+        print "[live] background video attempts exhausted; staying on snapshots"
         m.quietRetry = false
         m.watchdog.control = "stop"
         m.video.control = "stop"
+        logAttempt("snapshots")
+        m.loadingLabel.visible = false
+        if m.infoPanel.visible then updateInfoPanel()
         startKeepalive()
     else
         ' out of video sources — fall back to refreshing snapshots, and take
