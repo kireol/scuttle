@@ -209,6 +209,20 @@ function Frigate_FriendlyVideoError(code as integer, msg as string) as string
     return "Playback failed"
 end function
 
+' Current local time as "7:24 pm" for the on-screen clock
+function TimeUtil_FormatClock() as string
+    dt = CreateObject("roDateTime")
+    dt.ToLocalTime()
+    hr = dt.GetHours()
+    ampm = "am"
+    if hr >= 12 then ampm = "pm"
+    if hr = 0 then hr = 12
+    if hr > 12 then hr = hr - 12
+    mins = StrI(dt.GetMinutes()).Trim()
+    if Len(mins) = 1 then mins = "0" + mins
+    return StrI(hr).Trim() + ":" + mins + " " + ampm
+end function
+
 function TimeUtil_FormatEpoch(epoch as double) as string
     dt = CreateObject("roDateTime")
     dt.FromSeconds(Int(epoch))

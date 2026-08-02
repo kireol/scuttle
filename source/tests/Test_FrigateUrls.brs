@@ -50,6 +50,10 @@ sub Test_FrigateUrls(r as object)
     T("stream types repeated custom kept", ty.Count() = 2 and ty[0] = "_main" and ty[1] = "_hd", r)
     T("stream types no underscores", Frigate_StreamTypes(["cam1", "cam2"]).Count() = 0, r)
 
+    clk = TimeUtil_FormatClock()
+    T("clock has colon", Instr(1, clk, ":") > 0, r)
+    T("clock has am/pm", Instr(1, clk, "am") > 0 or Instr(1, clk, "pm") > 0, r)
+
     T("stream name replaces main", Frigate_StreamNameForType("cam_main", "_sub") = "cam_sub", r)
     T("stream name replaces sub", Frigate_StreamNameForType("cam_sub", "_roku") = "cam_roku", r)
     T("stream name bare appends", Frigate_StreamNameForType("cam", "_sub") = "cam_sub", r)
