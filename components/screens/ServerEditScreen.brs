@@ -112,6 +112,7 @@ sub onSelect()
                 exit for
             end if
         end for
+        autoPersist()
         rebuild()
     else if row.key = "liveMode"
         if m.server.liveMode = "video"
@@ -119,11 +120,13 @@ sub onSelect()
         else
             m.server.liveMode = "video"
         end if
+        autoPersist()
         rebuild()
     else if row.key = "streamType"
         fetchStreamTypes()
     else if row.key = "verifyTls"
         m.server.verifyTls = not (m.server.verifyTls = true)
+        autoPersist()
         rebuild()
     else if row.key = "tempUnit"
         if m.server.tempUnit = "c"
@@ -131,6 +134,7 @@ sub onSelect()
         else
             m.server.tempUnit = "c"
         end if
+        autoPersist()
         rebuild()
     else if row.key = "test"
         testConnection()
@@ -151,6 +155,13 @@ sub onSelect()
     else
         openKeyboard(row.key)
     end if
+end sub
+
+' Toggles and keyboard edits apply immediately for servers that already
+' exist — waiting for Save silently discarded changes on Back. New,
+' never-saved servers still require Save (no half-configured records).
+sub autoPersist()
+    if ServerStore_GetById(m.server.id) <> invalid then ServerStore_Upsert(m.server)
 end sub
 
 ' Render-thread-safe normalize (no roUrlTransfer): duplicate of trim logic
@@ -197,6 +208,7 @@ sub onKeyboardButton()
         else
             m.server[m.editingKey] = value
         end if
+        autoPersist()
         rebuild()
     end if
     d.close = true
@@ -255,6 +267,7 @@ sub onStreamTypeDialog()
     end if
     d.close = true
     m.dialog = invalid
+    autoPersist()
     rebuild()
 end sub
 
