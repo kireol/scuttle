@@ -20,11 +20,16 @@ sub init()
     m.hintLabel = m.top.FindNode("hintLabel")
     m.hintTimer = m.top.FindNode("hintTimer")
     m.hintTimer.ObserveFieldScoped("fire", "hideHint")
+    ' contrast strip tracks whichever bottom text is showing
+    m.bottomBar = m.top.FindNode("bottomBar")
+    m.loadingLabel.ObserveFieldScoped("visible", "updateBottomBar")
+    m.hintLabel.ObserveFieldScoped("visible", "updateBottomBar")
     m.hintShown = false
     m.infoPanel = m.top.FindNode("infoPanel")
     m.infoText = m.top.FindNode("infoText")
     m.placeholder = m.top.FindNode("placeholder")
     m.clockLabel = m.top.FindNode("clock")
+    m.clockLabel.ObserveFieldScoped("visible", "updateBottomBar")
     m.clockTimer = m.top.FindNode("clockTimer")
     m.clockTimer.ObserveFieldScoped("fire", "onClockTick")
     m.retryTimer = m.top.FindNode("retryTimer")
@@ -111,6 +116,10 @@ end sub
 
 sub onClockTick()
     m.clockLabel.text = TimeUtil_FormatClock()
+end sub
+
+sub updateBottomBar()
+    m.bottomBar.visible = m.loadingLabel.visible or m.hintLabel.visible or m.clockLabel.visible
 end sub
 
 sub onCycleTick()
