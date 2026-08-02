@@ -15,7 +15,9 @@
                     itemSize="[580, 362]" itemSpacing="[30, 30]" numColumns="3" numRows="2"
                     vertFocusAnimationStyle="floatingFocus" drawFocusFeedback="false" />
         <Label id="status" translation="[60, 1010]" color="0x8A959CFF" text="" width="1800" />
-        <Label id="clock" translation="[1560, 36]" width="300" horizAlign="right"
+        <!-- bottom-right: the Roku OS screensaver draws its own clock top-right
+             when nothing is playing, and two stacked times looks broken -->
+        <Label id="clock" translation="[1560, 1004]" width="300" horizAlign="right"
                color="0xE0E6EAFF" font="font:LargeBoldSystemFont" visible="false" />
         <Timer id="clockTimer" duration="10" repeat="true" />
         <Timer id="actTimer" duration="60" repeat="true" />
