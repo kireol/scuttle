@@ -910,9 +910,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
     if m.infoPanel.visible and key = "OK"
         cycleCamOverride() : return true
-    else if m.infoPanel.visible and key = "back"
+    else if m.infoPanel.visible and (key = "back" or key = "up")
         toggleInfoPanel() : return true
-    else if key = "options"
+    else if key = "options" or key = "up"
+        ' up mirrors * because Roku TVs reserve * for their own picture
+        ' settings sidebar during video playback
         toggleInfoPanel() : return true
     else if key = "left"
         switchBy(-1) : return true
