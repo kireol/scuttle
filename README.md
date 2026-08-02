@@ -161,3 +161,13 @@ Two verification paths are available, depending on whether a physical Roku is at
 `DEVICE_CHECKLIST.md` in the repo root tracks the full manual, on-device verification pass —
 every checklist item across all tasks that could not be exercised without a physical Roku. Run
 through it in order once a device is available.
+
+## Screensaver and wall-dashboard use
+
+Roku channels cannot disable the OS screensaver; only active video playback
+suppresses it. When live view falls back to snapshot mode (refreshing stills),
+Scuttle plays a tiny bundled black clip (`images/keepalive.mp4`) on loop
+underneath the stills to keep the screensaver away, so a wall-mounted camera
+dashboard is not interrupted. If Roku ever changes this behavior, the worst
+case is the system screensaver appearing during snapshot mode — press any
+button to dismiss it.

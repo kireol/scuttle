@@ -10,12 +10,19 @@
         <field id="liveStreams" type="assocarray" />
         <field id="liveStreamsSub" type="assocarray" />
         <field id="portFirst" type="boolean" value="true" />
+        <field id="cycleMode" type="boolean" value="false" />
         <field id="stopPlayback" type="boolean" value="false" onChange="onStopPlayback" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/screens/LivePlayerScreen.brs" />
     <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
+    <script type="text/brightscript" uri="pkg:/source/AppSettings.brs" />
+    <script type="text/brightscript" uri="pkg:/source/PrefStore.brs" />
     <children>
         <Video id="video" width="1920" height="1080" />
+        <!-- last grid snapshot, dimmed, shown while the source cascade runs so
+             the screen is never black during loading -->
+        <Poster id="placeholder" width="1920" height="1080" loadDisplayMode="scaleToFit"
+                opacity="0.45" visible="false" />
         <!-- snapshot-mode fallback: full-screen stills, double-buffered -->
         <Poster id="snapA" width="1920" height="1080" loadDisplayMode="scaleToFit" visible="false" />
         <Poster id="snapB" width="1920" height="1080" loadDisplayMode="scaleToFit" visible="false" />
@@ -23,6 +30,8 @@
                font="font:LargeBoldSystemFont" visible="false" />
         <Label id="fpsLabel" translation="[1560, 40]" width="300" horizAlign="right"
                color="0xFFFFFFB0" visible="false" />
+        <Label id="clock" translation="[1560, 88]" width="300" horizAlign="right"
+               color="0xE0E6EAB0" visible="false" />
         <!-- which stream (or snapshot mode) is currently being tried -->
         <Label id="loadingLabel" translation="[60, 1000]" color="0x8A959CFF" visible="false" />
         <!-- one-time pointer to the * info overlay, shown on first playback -->
@@ -51,5 +60,10 @@
         <Timer id="nameTimer" duration="3" repeat="false" />
         <Timer id="fpsTimer" duration="5" repeat="true" />
         <Timer id="hintTimer" duration="5" repeat="false" />
+        <Timer id="clockTimer" duration="10" repeat="true" />
+        <!-- quiet background video retry while downgraded to snapshots -->
+        <Timer id="retryTimer" duration="180" repeat="true" />
+        <!-- camera cycle dwell; duration set from settings at start -->
+        <Timer id="cycleTimer" duration="10" repeat="true" />
     </children>
 </component>
