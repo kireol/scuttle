@@ -2,6 +2,8 @@ sub init()
     m.list = m.top.FindNode("list")
     m.list.ObserveFieldScoped("itemSelected", "onSelect")
     m.top.ObserveField("wasShown", "onShownList")
+    ' version comes from the manifest so this label can never drift from it
+    m.top.FindNode("version").text = "v" + CreateObject("roAppInfo").GetVersion()
     refresh()
 end sub
 

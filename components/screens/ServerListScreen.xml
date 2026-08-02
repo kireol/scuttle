@@ -12,6 +12,8 @@
                 translation="[120, 45]" />
         <Label id="appTitle" text="Scuttle" translation="[275, 55]"
                color="0x2BB3C0FF" font="font:LargeBoldSystemFont" />
+        <Label id="version" translation="[275, 55]" width="1520" horizAlign="right"
+               color="0x8A959CFF" />
         <Label id="title" text="Settings" translation="[275, 112]"
                color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />
         <Label id="hint" text="OK: select / change   Back: return"
