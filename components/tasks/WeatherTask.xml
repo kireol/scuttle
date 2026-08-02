@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="WeatherTask" extends="Task">
+    <interface>
+        <field id="zipcode" type="string" value="" />
+        <field id="lat" type="string" value="" />
+        <field id="lon" type="string" value="" />
+        <field id="output" type="assocarray" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/WeatherTask.brs" />
+    <script type="text/brightscript" uri="pkg:/source/HttpSync.brs" />
+    <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
+</component>

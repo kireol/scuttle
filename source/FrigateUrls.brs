@@ -267,6 +267,17 @@ function Frigate_FriendlyVideoError(code as integer, msg as string) as string
     return "Playback failed"
 end function
 
+' "72° 0.12in" for the clock box (precip omitted when zero)
+function Weather_Format(tempF as dynamic, precipIn as dynamic) as string
+    if tempF = invalid then return ""
+    s = StrI(Int(tempF + 0.5)).Trim() + "°"
+    if precipIn <> invalid and precipIn > 0
+        hundredths = Int(precipIn * 100 + 0.5)
+        s = s + " " + Str(hundredths / 100.0).Trim() + "in"
+    end if
+    return s
+end function
+
 ' Current local time as "7:24 pm" for the on-screen clock
 function TimeUtil_FormatClock() as string
     dt = CreateObject("roDateTime")

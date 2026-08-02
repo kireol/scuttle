@@ -71,6 +71,11 @@ sub HandleAddServer(info as object)
         srv.go2rtcPort = Val(info.go2rtcport)
         if srv.go2rtcPort = 0 then srv.go2rtcPort = 1984
     end if
+    if info.zipcode <> invalid
+        srv.zipcode = info.zipcode
+        srv.zipLat = ""
+        srv.zipLon = ""
+    end if
     print "[main] addserver via ECP input: "; srv.name; " "; srv.baseUrl
     ServerStore_Upsert(srv)
 end sub

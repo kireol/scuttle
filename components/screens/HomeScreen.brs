@@ -10,6 +10,10 @@ sub init()
     m.actTimer.ObserveFieldScoped("fire", "fetchActivity")
     m.staleTimer = m.top.FindNode("staleTimer")
     m.staleTimer.ObserveFieldScoped("fire", "onStaleTick")
+    m.weatherTimer = m.top.FindNode("weatherTimer")
+    m.weatherTimer.ObserveFieldScoped("fire", "fetchWeather")
+    m.weatherText = ""
+    m.weatherTask = invalid
     m.lastSnapAt = {}
     m.toast = m.top.FindNode("toast")
     m.toastText = m.top.FindNode("toastText")
@@ -51,7 +55,47 @@ sub init()
 end sub
 
 sub onClockTick()
-    m.clockLabel.text = TimeUtil_FormatClock()
+    txt = TimeUtil_FormatClock()
+    if m.weatherText <> "" then txt = m.weatherText + "   " + txt
+    m.clockLabel.text = txt
+end sub
+
+' --- weather for the clock box: per-server ZIP -> temp + precip, cached
+' --- geocode on the server record, refreshed every 15 minutes
+sub fetchWeather()
+    if m.server = invalid or m.server.zipcode = invalid or m.server.zipcode = ""
+        m.weatherText = ""
+        onClockTick()
+        return
+    end if
+    if m.weatherTask <> invalid then return
+    t = CreateObject("roSGNode", "WeatherTask")
+    t.zipcode = m.server.zipcode
+    if m.server.zipLat <> invalid then t.lat = m.server.zipLat
+    if m.server.zipLon <> invalid then t.lon = m.server.zipLon
+    t.ObserveFieldScoped("output", "onWeather")
+    t.control = "RUN"
+    m.weatherTask = t
+    m.weatherTimer.control = "start"
+end sub
+
+sub onWeather(ev as object)
+    out = ev.GetData()
+    m.weatherTask = invalid
+    if out.ok <> true then return
+    m.weatherText = Weather_Format(out.tempF, out.precipIn)
+    onClockTick()
+    ' cache the geocode so the next fetch skips zippopotam
+    if m.server.zipLat = "" and out.lat <> invalid and out.lat <> ""
+        m.server.zipLat = out.lat
+        m.server.zipLon = out.lon
+        srv = ServerStore_GetById(m.server.id)
+        if srv <> invalid
+            srv.zipLat = out.lat
+            srv.zipLon = out.lon
+            ServerStore_Upsert(srv)
+        end if
+    end if
 end sub
 
 sub applyClockSetting()
@@ -212,6 +256,8 @@ sub reloadServers()
         st.lastServerId = m.server.id
         AppSettings_Save(st)
     end if
+    m.weatherText = ""
+    fetchWeather()
     applyClockSetting()
     renderTabs()
     renderMenu()

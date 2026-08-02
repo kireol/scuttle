@@ -55,6 +55,7 @@ function rows() as object
         { key: "streamType", title: "Stream type: " + m.server.streamType + "  (OK picks from server)" },
         { key: "verifyTls", title: "Verify TLS certificate: " + verifyLabel + "  (OK toggles)" },
         { key: "cycleCams", title: "Cycle cameras: " + cycleLabel + "  (OK picks)" },
+        { key: "zipcode", title: "Weather ZIP code: " + m.server.zipcode },
         { key: "test", title: "▶ Test Connection" },
         { key: "save", title: "✔ Save" },
         { key: "delete", title: "✖ Delete Server" }
@@ -178,6 +179,11 @@ sub onKeyboardButton()
         else if m.editingKey = "mediamtxPort"
             m.server.mediamtxPort = Val(value)
             if m.server.mediamtxPort = 0 then m.server.mediamtxPort = 8888
+        else if m.editingKey = "zipcode"
+            m.server.zipcode = value.Trim()
+            ' new zip invalidates the cached geocode
+            m.server.zipLat = ""
+            m.server.zipLon = ""
         else
             m.server[m.editingKey] = value
         end if
