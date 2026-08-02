@@ -49,6 +49,13 @@ sub onScreenClose(ev as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    ' A key reaching the scene means nothing in the active screen has focus
+    ' (launch races can leave focus in limbo and every key silently dies).
+    ' Poke the screen to re-grab focus so the NEXT press works normally.
+    if press and m.screens.Count() > 0
+        top = m.screens.Peek()
+        if top.HasField("wasShown") then top.wasShown = true
+    end if
     if press and key = "back"
         if m.screens.Count() > 1
             PopScreen()
