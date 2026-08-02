@@ -172,27 +172,31 @@ dashboard is not interrupted. If Roku ever changes this behavior, the worst
 case is the system screensaver appearing during snapshot mode — press any
 button to dismiss it.
 
-## Live video reliability (go2rtc restream)
+## Live video reliability (Roku vs go2rtc HLS)
 
-Roku's HLS player needs a few seconds of playlist window; go2rtc serves a very
-short one (segments split on keyframes, and most cameras produce short GOPs),
-so live video often starts and then dies with `mpr zero length playlist`. The
-app detects this and shows a tip in the * overlay; the real fix is server-side.
+Live video through go2rtc's HLS endpoint starts and then dies on Roku with
+`mpr zero length playlist`. Empirically (tested against go2rtc 1.9.10, VLC
+plays the same URLs fine): go2rtc serves 0.5-second segments and keeps only
+~1 second of playlist window, for both MPEG-TS and fMP4 segment modes, and
+regardless of the restream's GOP settings — its HLS is a debugging feature,
+not a production packager. Roku's HLS player needs several seconds of
+window and refuses to re-poll an empty playlist, so it cannot survive on
+this. The app detects the error signature and shows a tip in the * overlay,
+then falls back to full-resolution refreshing snapshots.
 
-Add a Roku-friendly restream per camera in your Frigate config — the app
-automatically tries `<name>_roku` as its last video tier:
+To get real live video on Roku, put a proper HLS packager next to Frigate
+and point it at the same streams — MediaMTX is the lightest option:
 
 ```yaml
-go2rtc:
-  streams:
-    front_door_roku:
-      # h264, capped width, and a long GOP (-g) so HLS segments — and with
-      # them the playlist window — are several seconds long. #hardware uses
-      # the server's GPU/QSV encoder if present; drop it for CPU encoding.
-      - "ffmpeg:front_door_main#video=h264#hardware#width=1280#raw=-g 100"
+# mediamtx.yml — pulls from go2rtc's RTSP, serves spec-compliant HLS
+paths:
+  front_yard:
+    source: rtsp://127.0.0.1:8554/front_yard_roku
+hls: yes
+hlsSegmentCount: 7
+hlsSegmentDuration: 1s
 ```
 
-Tune `width` to your TV/bandwidth and `-g` to roughly 4-5x the camera's FPS.
-Cold start of an ffmpeg restream takes ~8s, so the first attempt may still
-fall through to a lower tier — the app's quiet retry recovers to it within a
-few minutes once the restream is warm.
+MediaMTX then serves `http://<host>:8888/front_yard/index.m3u8`, which
+Roku's player handles. Wiring an alternative HLS base URL per server into
+the app is a small change once such a packager exists.
