@@ -56,7 +56,7 @@
         </Group>
         <!-- * info overlay: stream details for the current camera -->
         <Group id="infoPanel" visible="false" translation="[60, 120]">
-            <Rectangle width="720" height="480" color="0x101418E0" />
+            <Rectangle width="720" height="660" color="0x101418E0" />
             <Label id="infoText" translation="[28, 24]" width="664" wrap="true"
                    color="0xE0E6EAFF" lineSpacing="8" />
         </Group>
