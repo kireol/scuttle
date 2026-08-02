@@ -279,9 +279,12 @@ sub stopWarmTask()
     end if
 end sub
 
-' --- screensaver guard: play a bundled 2s black clip on loop underneath the
-' --- snapshot posters; video playback is the only thing that reliably holds
-' --- off the OS screensaver, which otherwise interrupts a wall dashboard
+' --- screensaver guard: play a bundled clip on loop underneath the snapshot
+' --- posters; video playback is the only thing that reliably holds off the
+' --- OS screensaver, which otherwise interrupts a wall dashboard. The clip
+' --- is 10 minutes of mid-gray: TVs drive their backlight from the video
+' --- plane, so a black clip (or frequent loop restarts) made the whole
+' --- screen pulse dark and bright in snapshot mode.
 sub startKeepalive()
     if m.keepalive then return
     m.keepalive = true

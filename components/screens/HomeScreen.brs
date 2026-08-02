@@ -9,11 +9,16 @@ sub init()
     m.actTimer = m.top.FindNode("actTimer")
     m.actTimer.ObserveFieldScoped("fire", "fetchActivity")
     m.grid.ObserveFieldScoped("itemSelected", "onTileSelected")
+    m.grid.ObserveFieldScoped("itemFocused", "updateScrollbar")
+    m.scrollTrack = m.top.FindNode("scrollTrack")
+    m.scrollThumb = m.top.FindNode("scrollThumb")
+    m.gridTotalRows = 0
+    m.gridVisibleRows = 1
     m.top.ObserveField("wasShown", "onShown")
     m.top.ObserveField("visible", "onVisibleChange")
 
-    m.menuItems = ["Review", "Explore", "Recordings", "Cycle Cameras", "Settings"]
-    m.settingsIdx = 4   ' index of "Settings" in m.menuItems
+    m.menuItems = ["Live", "Review", "Explore", "Recordings", "Cycle Cameras", "Settings"]
+    m.settingsIdx = 5   ' index of "Settings" in m.menuItems
     m.focusZone = "grid"   ' "tabs" | "menu" | "grid"
     m.tabIdx = 0
     m.menuIdx = 0
@@ -115,6 +120,8 @@ sub clearCameras()
     m.liveStreams = {}
     m.liveStreamsSub = {}
     m.grid.content = CreateObject("roSGNode", "ContentNode")
+    m.gridTotalRows = 0
+    updateScrollbar()
 end sub
 
 sub renderTabsEmpty()
@@ -336,6 +343,8 @@ sub buildGrid()
     rows = Int(880 / (tileH + 30))
     if rows < 1 then rows = 1
     m.grid.numRows = rows
+    m.gridVisibleRows = rows
+    m.gridTotalRows = Int((m.cameras.Count() + cols - 1) / cols)
     m.grid.itemSize = [tileW, tileH]
     content = CreateObject("roSGNode", "ContentNode")
     for each cam in m.cameras
@@ -350,6 +359,31 @@ sub buildGrid()
     lastIdx = st.lastGridIdx
     if lastIdx > 0 and lastIdx < content.GetChildCount() then m.grid.jumpToItem = lastIdx
     if m.focusZone = "grid" then m.grid.SetFocus(true)
+    updateScrollbar()
+end sub
+
+' Right-edge scroll indicator: thumb height shows how much of the grid fits,
+' thumb position tracks the focused row. Hidden when everything fits.
+sub updateScrollbar()
+    if m.gridTotalRows <= m.gridVisibleRows or m.cameras.Count() = 0
+        m.scrollTrack.visible = false
+        m.scrollThumb.visible = false
+        return
+    end if
+    trackH = 880
+    thumbH = Int(trackH * m.gridVisibleRows / m.gridTotalRows)
+    if thumbH < 40 then thumbH = 40
+    row = 0
+    if m.grid.itemFocused >= 0 and m.grid.numColumns > 0
+        row = Int(m.grid.itemFocused / m.grid.numColumns)
+    end if
+    y = 170
+    maxRow = m.gridTotalRows - 1
+    if maxRow > 0 then y = 170 + Int((trackH - thumbH) * row / maxRow)
+    m.scrollThumb.height = thumbH
+    m.scrollThumb.translation = [1872, y]
+    m.scrollTrack.visible = true
+    m.scrollThumb.visible = true
 end sub
 
 ' Up to 3 workers, cameras split round-robin: one slow camera (or server)
@@ -441,6 +475,13 @@ sub openMenuItem()
         return
     end if
     name = m.menuItems[m.menuIdx]
+    if name = "Live"
+        ' the home grid IS the live view — just hand focus back to it
+        m.focusZone = "grid"
+        renderMenu()
+        m.grid.SetFocus(true)
+        return
+    end if
     if name = "Cycle Cameras"
         if m.cameras.Count() = 0
             m.status.text = "No cameras loaded yet"
