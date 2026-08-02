@@ -15,6 +15,11 @@ sub Main(args as dynamic)
     ' keyboard, e.g. curl -d '' "http://<roku>:8060/input?cmd=addserver&name=..&url=.."
     ecpInput = CreateObject("roInput")
     ecpInput.SetMessagePort(port)
+    ' throttle for input?cmd=runtests: deploy.sh retries the trigger when the
+    ' debug console is mute, and overlapping suite runs race the registry
+    ' backup/wipe/restore in Test_ServerStore — that has eaten real servers
+    testClock = CreateObject("roTimespan")
+    lastTestMs = -60000
     while true
         msg = wait(0, port)
         if type(msg) = "roSGScreenEvent"
@@ -30,7 +35,10 @@ sub Main(args as dynamic)
                 ' Instant-Resume devices only RESUME on ECP launch, so the
                 ' RunTests launch arg is unreliable — this input command runs
                 ' the suite in the live app instead (see deploy.sh --test)
-                RunAllTests()
+                if testClock.TotalMilliseconds() - lastTestMs >= 60000
+                    lastTestMs = testClock.TotalMilliseconds()
+                    RunAllTests()
+                end if
             end if
         end if
     end while
