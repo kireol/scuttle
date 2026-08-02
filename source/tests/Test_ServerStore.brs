@@ -1,11 +1,16 @@
 sub Test_ServerStore(r as object)
     print "Test_ServerStore"
-    ' isolate: back up real servers, wipe, restore at the end
+    ' isolate: back up real servers (registry AND cachefs mirror), wipe,
+    ' restore at the end
     sec = CreateObject("roRegistrySection", "frigate_servers")
     backup = ""
     if sec.Exists("servers") then backup = sec.Read("servers")
     sec.Delete("servers")
     sec.Flush()
+    cachePath = ServerStore_CachePath()
+    fileBackup = ReadAsciiFile(cachePath)
+    hadFile = fileBackup <> ""
+    if hadFile then DeleteFile(cachePath)
 
     T("load empty returns []", ServerStore_Load().Count() = 0, r)
 
@@ -37,6 +42,8 @@ sub Test_ServerStore(r as object)
     T("delete removes", ServerStore_Load().Count() = 0, r)
 
     ' records saved before cfProxied existed get the field defaulted on load
+    ' (plain-array registry payload, no cachefs file = legacy layout)
+    DeleteFile(cachePath)
     sec.Write("servers", FormatJson([{ id: "legacy1", name: "Old", baseUrl: "http://x" }]))
     sec.Flush()
     legacy = ServerStore_Load()
@@ -51,4 +58,9 @@ sub Test_ServerStore(r as object)
         sec.Delete("servers")
     end if
     sec.Flush()
+    if hadFile
+        WriteAsciiFile(cachePath, fileBackup)
+    else
+        DeleteFile(cachePath)
+    end if
 end sub

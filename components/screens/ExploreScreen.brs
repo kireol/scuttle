@@ -86,7 +86,7 @@ sub persistToken(newToken as string)
         srv = ServerStore_GetById(m.top.server.id)
         if srv <> invalid
             srv.token = newToken
-            ServerStore_Upsert(srv)
+            ServerStore_Upsert(srv, "tokExp")
         end if
     end if
 end sub

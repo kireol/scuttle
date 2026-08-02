@@ -46,7 +46,7 @@ sub onSummary(ev as object)
         srv = ServerStore_GetById(m.top.server.id)
         if srv <> invalid
             srv.token = out.newToken
-            ServerStore_Upsert(srv)
+            ServerStore_Upsert(srv, "tokRec")
         end if
     end if
     if not out.ok
