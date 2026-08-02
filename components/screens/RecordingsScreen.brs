@@ -50,7 +50,7 @@ sub onSummary(ev as object)
         end if
     end if
     if not out.ok
-        m.status.text = "Failed to load summary (HTTP " + StrI(out.status).Trim() + ")"
+        m.status.text = Frigate_FriendlyError(out.status, out.error)
         return
     end if
     m.summary = ParseJson(out.body)

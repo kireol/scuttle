@@ -6,21 +6,41 @@
         <field id="server" type="assocarray" />
         <field id="cameras" type="array" />
         <field id="startIndex" type="integer" value="0" />
+        <field id="snapPaths" type="array" />
+        <field id="liveStreams" type="assocarray" />
+        <field id="liveStreamsSub" type="assocarray" />
+        <field id="portFirst" type="boolean" value="true" />
         <field id="stopPlayback" type="boolean" value="false" onChange="onStopPlayback" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/screens/LivePlayerScreen.brs" />
     <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
     <children>
         <Video id="video" width="1920" height="1080" />
+        <!-- snapshot-mode fallback: full-screen stills, double-buffered -->
+        <Poster id="snapA" width="1920" height="1080" loadDisplayMode="scaleToFit" visible="false" />
+        <Poster id="snapB" width="1920" height="1080" loadDisplayMode="scaleToFit" visible="false" />
         <Label id="camName" translation="[60, 40]" color="0xFFFFFFFF"
                font="font:LargeBoldSystemFont" visible="false" />
+        <Label id="fpsLabel" translation="[1560, 40]" width="300" horizAlign="right"
+               color="0xFFFFFFB0" visible="false" />
+        <!-- which stream (or snapshot mode) is currently being tried -->
+        <Label id="loadingLabel" translation="[60, 1000]" color="0x8A959CFF" visible="false" />
+        <!-- one-time pointer to the * info overlay, shown on first playback -->
+        <Label id="hintLabel" translation="[0, 1000]" width="1920" horizAlign="center"
+               color="0xE0E6EAFF" text="Press * for stream info" visible="false" />
         <Group id="errorPanel" visible="false">
             <Rectangle width="1920" height="1080" color="0x101418E0" />
             <Label id="errorTitle" text="Playback failed" translation="[660, 420]"
                    color="0xFF6B6BFF" font="font:LargeBoldSystemFont" />
             <Label id="errorDetail" translation="[400, 490]" width="1120" wrap="true" color="0xE0E6EAFF" />
             <Label id="errorHint" translation="[400, 600]" width="1120" wrap="true" color="0x8A959CFF"
-                   text="Hint: Roku needs H.264 video and AAC audio. In Frigate's go2rtc config add '#video=h264#audio=aac' to this camera's stream, and confirm go2rtc port 1984 is reachable. Press OK to retry, Back to exit." />
+                   text="All stream sources were tried without luck. Check that the camera is online and streaming H.264 or H.265. Press OK to retry, Back to exit." />
+        </Group>
+        <!-- * info overlay: stream details for the current camera -->
+        <Group id="infoPanel" visible="false" translation="[60, 120]">
+            <Rectangle width="720" height="480" color="0x101418E0" />
+            <Label id="infoText" translation="[28, 24]" width="664" wrap="true"
+                   color="0xE0E6EAFF" lineSpacing="8" />
         </Group>
         <Group id="switcher" visible="false" translation="[0, 830]">
             <Rectangle width="1920" height="250" color="0x101418D0" />
@@ -29,5 +49,7 @@
                         drawFocusFeedback="false" />
         </Group>
         <Timer id="nameTimer" duration="3" repeat="false" />
+        <Timer id="fpsTimer" duration="5" repeat="true" />
+        <Timer id="hintTimer" duration="5" repeat="false" />
     </children>
 </component>

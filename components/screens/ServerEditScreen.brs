@@ -31,6 +31,8 @@ function rows() as object
         { key: "authType", title: "Auth type: " + authLabel + "  (OK cycles)" },
         { key: "username", title: "Username: " + m.server.username },
         { key: "password", title: "Password: " + String(Len(m.server.password), "*") },
+        { key: "liveMode", title: "Live view: " + m.server.liveMode + "  (OK cycles)" },
+        { key: "streamType", title: "Stream type: " + m.server.streamType + "  (OK picks from server)" },
         { key: "test", title: "▶ Test Connection" },
         { key: "save", title: "✔ Save" },
         { key: "delete", title: "✖ Delete Server" }
@@ -38,16 +40,21 @@ function rows() as object
 end function
 
 sub rebuild()
+    ' Replacing list content resets focus to row 0; restore it so
+    ' cycling auth type or closing a keyboard keeps the user's place
+    idx = m.list.itemFocused
     content = CreateObject("roSGNode", "ContentNode")
     for each row in rows()
         item = content.CreateChild("ContentNode")
         item.title = row.title
     end for
     m.list.content = content
+    if idx > 0 then m.list.jumpToItem = idx
 end sub
 
 sub onSelect()
     row = rows()[m.list.itemSelected]
+    print "[edit] selected row: "; row.key; " url="; m.server.baseUrl
     if row.key = "authType"
         order = ["none", "basic", "frigate"]
         for i = 0 to 2
@@ -57,12 +64,21 @@ sub onSelect()
             end if
         end for
         rebuild()
+    else if row.key = "liveMode"
+        if m.server.liveMode = "video"
+            m.server.liveMode = "snapshot"
+        else
+            m.server.liveMode = "video"
+        end if
+        rebuild()
+    else if row.key = "streamType"
+        fetchStreamTypes()
     else if row.key = "test"
         testConnection()
     else if row.key = "save"
         m.server.baseUrl = Frigate_NormalizeBaseUrl_Render(m.server.baseUrl)
         ServerStore_Upsert(m.server)
-        m.top.closeMe = true
+        showSavedDialog()
     else if row.key = "delete"
         ServerStore_Delete(m.server.id)
         m.top.closeMe = true
@@ -97,6 +113,7 @@ end sub
 
 sub onKeyboardButton()
     d = m.dialog
+    print "[edit] keyboard button "; d.buttonSelected; " text="; d.text
     if d.buttonSelected = 0
         value = d.text
         if m.editingKey = "go2rtcPort"
@@ -109,6 +126,87 @@ sub onKeyboardButton()
     end if
     d.close = true
     m.dialog = invalid
+end sub
+
+' Discover which go2rtc stream variants exist on this server, then offer a
+' dialog pick — "auto" keeps the built-in main -> sub -> _roku fallback
+sub fetchStreamTypes()
+    m.status.text = "Looking up stream types on " + m.server.baseUrl + " ..."
+    m.server.baseUrl = Frigate_NormalizeBaseUrl_Render(m.server.baseUrl)
+    t = CreateObject("roSGNode", "ApiTask")
+    t.input = { server: m.server, path: "/api/go2rtc/api/streams", method: "GET", body: "", savePath: "", context: invalid }
+    t.ObserveFieldScoped("output", "onStreamTypes")
+    t.control = "RUN"
+    m.pendingTask = t
+end sub
+
+sub onStreamTypes(ev as object)
+    out = ev.GetData()
+    m.pendingTask = invalid
+    if out.newToken <> "" then m.server.token = out.newToken
+    if not out.ok
+        m.status.text = Frigate_FriendlyError(out.status, out.error)
+        return
+    end if
+    streams = ParseJson(out.body)
+    names = []
+    if streams <> invalid
+        for each k in streams
+            names.Push(k)
+        end for
+    end if
+    m.typeOptions = ["auto"]
+    m.typeOptions.Append(Frigate_StreamTypes(names))
+    if m.typeOptions.Count() = 1
+        m.status.text = "No stream variants found on the server — keeping auto"
+        m.server.streamType = "auto"
+        rebuild()
+        return
+    end if
+    m.status.text = ""
+    d = CreateObject("roSGNode", "Dialog")
+    d.title = "Stream type"
+    d.message = "Pick which go2rtc stream variant live view should use"
+    d.buttons = m.typeOptions
+    d.ObserveFieldScoped("buttonSelected", "onStreamTypeDialog")
+    m.dialog = d
+    m.top.GetScene().dialog = d
+end sub
+
+sub onStreamTypeDialog()
+    d = m.dialog
+    if d.buttonSelected >= 0 and d.buttonSelected < m.typeOptions.Count()
+        m.server.streamType = m.typeOptions[d.buttonSelected]
+    end if
+    d.close = true
+    m.dialog = invalid
+    rebuild()
+end sub
+
+sub showSavedDialog()
+    d = CreateObject("roSGNode", "Dialog")
+    d.title = "Server saved"
+    name = m.server.name
+    if name = "" then name = "server"
+    d.buttons = ["View " + name + " cameras", "Back to settings"]
+    d.ObserveFieldScoped("buttonSelected", "onSavedDialog")
+    m.dialog = d
+    m.top.GetScene().dialog = d
+end sub
+
+sub onSavedDialog()
+    d = m.dialog
+    choice = d.buttonSelected
+    d.close = true
+    m.dialog = invalid
+    if choice = 0
+        ' land on this server's tab on the home screen
+        scene = m.top.GetScene()
+        scene.goToServerId = m.server.id
+        scene.CallFunc("popToRoot")
+    else
+        m.top.closeMe = true
+    end if
 end sub
 
 sub testConnection()
@@ -156,12 +254,8 @@ sub onTestResult(ev as object)
         else
             m.status.text = "Connected, but response is not a Frigate config"
         end if
-    else if out.status = 401
-        m.status.text = "Auth rejected (401) — check auth type / credentials"
-    else if out.status = 0
-        m.status.text = "Unreachable: " + out.error
     else
-        m.status.text = "HTTP " + StrI(out.status).Trim()
+        m.status.text = Frigate_FriendlyError(out.status, out.error)
     end if
 end sub
 

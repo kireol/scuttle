@@ -121,7 +121,7 @@ sub onEvents(ev as object)
     m.pendingTask = invalid
     persistToken(out.newToken)
     if not out.ok
-        m.status.text = "Failed to load events (HTTP " + StrI(out.status).Trim() + ")"
+        m.status.text = Frigate_FriendlyError(out.status, out.error)
         return
     end if
     m.events = ParseJson(out.body)

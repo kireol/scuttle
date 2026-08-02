@@ -6,7 +6,15 @@ function ServerStore_Load() as object
     sec = ServerStore_Section()
     if sec.Exists("servers")
         data = ParseJson(sec.Read("servers"))
-        if data <> invalid and GetInterface(data, "ifArray") <> invalid then return data
+        if data <> invalid and GetInterface(data, "ifArray") <> invalid
+            ' default fields added after records were first saved
+            for each s in data
+                if not s.DoesExist("cfProxied") then s.cfProxied = false
+                if not s.DoesExist("liveMode") then s.liveMode = "video"
+                if not s.DoesExist("streamType") then s.streamType = "auto"
+            end for
+            return data
+        end if
     end if
     return []
 end function
@@ -58,5 +66,8 @@ function ServerStore_NewServer() as object
         username: ""
         password: ""
         token: ""
+        cfProxied: false
+        liveMode: "video"
+        streamType: "auto"
     }
 end function

@@ -1,7 +1,10 @@
 sub init()
     m.host = m.top.FindNode("screenHost")
     m.screens = []
-    ShowFirstScreen()
+end sub
+
+sub onReady()
+    if m.top.ready and m.screens.Count() = 0 then ShowFirstScreen()
 end sub
 
 sub ShowFirstScreen()
@@ -18,8 +21,9 @@ sub DoPushScreen(screen as object)
     screen.ObserveFieldScoped("closeMe", "onScreenClose")
     m.screens.Push(screen)
     m.host.AppendChild(screen)
-    screen.wasShown = true
+    ' Focus the screen first so its wasShown handler can hand focus to an inner widget
     screen.SetFocus(true)
+    screen.wasShown = true
 end sub
 
 sub PopScreen()
@@ -29,8 +33,8 @@ sub PopScreen()
     m.host.RemoveChild(screen)
     top = m.screens[m.screens.Count() - 1]
     top.visible = true
-    top.wasShown = true
     top.SetFocus(true)
+    top.wasShown = true
 end sub
 
 sub onScreenClose(ev as object)
@@ -49,5 +53,13 @@ end function
 
 function pushScreen(screen as object) as boolean
     DoPushScreen(screen)
+    return true
+end function
+
+' Close every pushed screen, landing back on the home screen
+function popToRoot() as boolean
+    while m.screens.Count() > 1
+        PopScreen()
+    end while
     return true
 end function

@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="AppScene" extends="Scene">
     <interface>
+        <field id="ready" type="boolean" value="false" onChange="onReady" />
+        <field id="exitApp" type="boolean" value="false" />
+        <field id="serversChanged" type="boolean" value="false" alwaysNotify="true" />
+        <!-- server id HomeScreen should switch its tab to (set before popToRoot) -->
+        <field id="goToServerId" type="string" value="" alwaysNotify="true" />
         <function name="pushScreen" />
+        <function name="popToRoot" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/AppScene.brs" />
     <script type="text/brightscript" uri="pkg:/source/ServerStore.brs" />
