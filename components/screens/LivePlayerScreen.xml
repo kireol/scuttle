@@ -30,12 +30,17 @@
         <Rectangle id="videoCover" translation="[2, 0]" width="1920" height="1080"
                    color="0x000000FF" visible="false" />
         <!-- last grid snapshot, dimmed, shown while the source cascade runs so
-             the screen is never black during loading -->
+             the screen is never black during loading.
+             loadWidth/loadHeight: cameras send 2560x1440+ JPEGs; decoding
+             them at full size churns ~15MB textures every refresh and the OS
+             eventually kills the channel (crash-to-home) — cap at the UI res -->
         <Poster id="placeholder" width="1920" height="1080" loadDisplayMode="scaleToFit"
-                opacity="0.45" visible="false" />
+                loadWidth="1920" loadHeight="1080" opacity="0.45" visible="false" />
         <!-- snapshot-mode fallback: full-screen stills, double-buffered -->
-        <Poster id="snapA" width="1920" height="1080" loadDisplayMode="scaleToFit" visible="false" />
-        <Poster id="snapB" width="1920" height="1080" loadDisplayMode="scaleToFit" visible="false" />
+        <Poster id="snapA" width="1920" height="1080" loadDisplayMode="scaleToFit"
+                loadWidth="1920" loadHeight="1080" visible="false" />
+        <Poster id="snapB" width="1920" height="1080" loadDisplayMode="scaleToFit"
+                loadWidth="1920" loadHeight="1080" visible="false" />
         <Label id="camName" translation="[60, 40]" color="0xFFFFFFFF"
                font="font:LargeBoldSystemFont" visible="false" />
         <!-- bottom-right, away from the OS screensaver clock (top-right);
