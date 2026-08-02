@@ -87,6 +87,13 @@ sub onSelect()
         showSavedDialog()
     else if row.key = "delete"
         ServerStore_Delete(m.server.id)
+        ' drop everything else stored for this server too
+        PrefStore_PruneServer(m.server.id)
+        st = AppSettings_Load()
+        if st.lastServerId = m.server.id
+            st.lastServerId = ""
+            AppSettings_Save(st)
+        end if
         m.top.closeMe = true
     else
         openKeyboard(row.key)

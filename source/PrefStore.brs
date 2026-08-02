@@ -52,6 +52,32 @@ function CamStream_Get(serverId as string, camera as string) as string
     return ""
 end function
 
+' Drop everything stored for a server that is being deleted
+sub PrefStore_PruneServer(serverId as string)
+    sec = PrefStore_Section()
+    if sec.Exists("tiers")
+        all = ParseJson(sec.Read("tiers"))
+        if all <> invalid and all.DoesExist(serverId)
+            all.Delete(serverId)
+            sec.Write("tiers", FormatJson(all))
+        end if
+    end if
+    if sec.Exists("camstreams")
+        data = ParseJson(sec.Read("camstreams"))
+        if data <> invalid
+            doomed = []
+            for each k in data
+                if Left(k, Len(serverId) + 1) = serverId + "|" then doomed.Push(k)
+            end for
+            for each k in doomed
+                data.Delete(k)
+            end for
+            if doomed.Count() > 0 then sec.Write("camstreams", FormatJson(data))
+        end if
+    end if
+    sec.Flush()
+end sub
+
 sub CamStream_Set(serverId as string, camera as string, streamType as string)
     sec = PrefStore_Section()
     data = invalid

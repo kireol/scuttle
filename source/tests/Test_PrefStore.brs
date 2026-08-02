@@ -33,6 +33,17 @@ sub Test_PrefStore(r as object)
     CamStream_Set("srv1", "cam", "auto")
     T("camstream auto clears", CamStream_Get("srv1", "cam") = "", r)
 
+    ' prune removes everything for one server, leaves others alone
+    TierStore_Set("srvA", 1, false)
+    TierStore_Set("srvB", 2, true)
+    CamStream_Set("srvA", "cam1", "_sub")
+    CamStream_Set("srvB", "cam1", "_roku")
+    PrefStore_PruneServer("srvA")
+    T("prune drops tier", TierStore_Get("srvA") = invalid, r)
+    T("prune keeps other tier", TierStore_Get("srvB") <> invalid, r)
+    T("prune drops camstream", CamStream_Get("srvA", "cam1") = "", r)
+    T("prune keeps other camstream", CamStream_Get("srvB", "cam1") = "_roku", r)
+
     if backupTiers <> "" then sec.Write("tiers", backupTiers) else sec.Delete("tiers")
     if backupCams <> "" then sec.Write("camstreams", backupCams) else sec.Delete("camstreams")
     sec.Flush()

@@ -34,6 +34,9 @@ function buildRows() as object
     rows.Push({ kind: "columns", title: "  Home screen columns: " + StrI(m.settings.gridColumns).Trim() })
     rows.Push({ kind: "portFirst", title: "  Live streaming: " + liveMode })
     rows.Push({ kind: "clock", title: "  Show clock: " + clockLabel })
+    boxesLabel = "off"
+    if m.settings.showBoxes = true then boxesLabel = "on"
+    rows.Push({ kind: "boxes", title: "  Motion boxes on snapshots: " + boxesLabel })
     rows.Push({ kind: "cycle", title: "  Camera cycle time: " + StrI(m.settings.cycleSecs).Trim() + "s" })
     return rows
 end function
@@ -77,6 +80,8 @@ sub onSelect()
         m.settings.livePortFirst = not m.settings.livePortFirst
     else if row.kind = "clock"
         m.settings.showClock = not (m.settings.showClock = true)
+    else if row.kind = "boxes"
+        m.settings.showBoxes = not (m.settings.showBoxes = true)
     else if row.kind = "cycle"
         cycle = [5, 10, 15, 30, 60]
         cur = 1   ' default 10s

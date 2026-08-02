@@ -20,7 +20,7 @@ sub execute()
             if m.top.fullUrl <> ""
                 url = m.top.fullUrl
             else
-                url = server.baseUrl + Frigate_SnapshotPath(cam, m.top.height)
+                url = server.baseUrl + Frigate_SnapshotPath(cam, m.top.height, m.top.bbox)
             end if
             res = doRequest(url, headers, "GET", "", path, server.verifyTls = true)
             if res.status = 401 and server.authType = "frigate" and server.username <> ""

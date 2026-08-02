@@ -8,6 +8,8 @@
     <script type="text/brightscript" uri="pkg:/components/screens/ServerEditScreen.brs" />
     <script type="text/brightscript" uri="pkg:/source/ServerStore.brs" />
     <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
+    <script type="text/brightscript" uri="pkg:/source/AppSettings.brs" />
+    <script type="text/brightscript" uri="pkg:/source/PrefStore.brs" />
     <children>
         <Label id="title" text="Edit Server" translation="[120, 60]"
                color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />

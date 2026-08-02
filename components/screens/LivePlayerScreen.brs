@@ -22,6 +22,7 @@ sub init()
     m.hintTimer.ObserveFieldScoped("fire", "hideHint")
     ' contrast strip tracks whichever bottom text is showing
     m.bottomBar = m.top.FindNode("bottomBar")
+    m.clockBg = m.top.FindNode("clockBg")
     m.loadingLabel.ObserveFieldScoped("visible", "updateBottomBar")
     m.hintLabel.ObserveFieldScoped("visible", "updateBottomBar")
     m.hintShown = false
@@ -42,6 +43,9 @@ sub init()
     m.keepalive = false
     ' true while a background video retry runs behind live snapshots
     m.quietRetry = false
+    ' set when go2rtc's "zero length playlist" error is seen — the * overlay
+    ' then points at the server-side fix
+    m.sawZeroLen = false
     m.errorPanel = m.top.FindNode("errorPanel")
     m.errorDetail = m.top.FindNode("errorDetail")
     m.switcher = m.top.FindNode("switcher")
@@ -119,7 +123,11 @@ sub onClockTick()
 end sub
 
 sub updateBottomBar()
-    m.bottomBar.visible = m.loadingLabel.visible or m.hintLabel.visible or m.clockLabel.visible
+    ' full-width strip only when loading/hint text is up; a clock alone gets
+    ' a snug box with a little margin instead of a screen-wide bar
+    others = m.loadingLabel.visible or m.hintLabel.visible
+    m.bottomBar.visible = others
+    m.clockBg.visible = m.clockLabel.visible and not others
 end sub
 
 sub onCycleTick()
@@ -587,6 +595,9 @@ sub onVideoState()
         print "[live] errorCode="; m.video.errorCode; " errorMsg="; m.video.errorMsg; " url="; currentUrl()
         info = m.video.errorInfo
         if info <> invalid then print "[live] errorInfo: "; FormatJson(info)
+        if info <> invalid and info.dbgmsg <> invalid and Instr(1, info.dbgmsg, "zero length playlist") > 0
+            m.sawZeroLen = true
+        end if
         ' advanceAttempt falls back to snapshot mode once every video source
         ' is exhausted — never strand the user on an error panel here
         advanceAttempt()
@@ -756,6 +767,10 @@ sub updateInfoPanel()
     ov = CamStream_Get(m.top.server.id, cam)
     if ov = "" then ov = "auto"
     txt = txt + nl + "Stream override: " + ov + "  (OK cycles)"
+    if m.sawZeroLen
+        txt = txt + nl + "Tip: go2rtc's HLS window is too small for Roku —"
+        txt = txt + nl + "see README, 'Live video reliability'"
+    end if
     m.infoText.text = txt
 end sub
 

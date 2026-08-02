@@ -34,8 +34,11 @@
         <Label id="clock" translation="[1560, 1000]" width="300" horizAlign="right"
                color="0xE0E6EAB0" visible="false" />
         <!-- translucent strip behind the bottom text so it always has contrast
-             against video or snapshots; visibility follows the labels below -->
+             against video or snapshots; visibility follows the labels below.
+             When only the clock is showing, a snug box replaces the full bar. -->
         <Rectangle id="bottomBar" translation="[0, 988]" width="1920" height="64"
+                   color="0x30303080" visible="false" />
+        <Rectangle id="clockBg" translation="[1700, 990]" width="180" height="52"
                    color="0x30303080" visible="false" />
         <!-- which stream (or snapshot mode) is currently being tried -->
         <Label id="loadingLabel" translation="[60, 1000]" color="0xC8D2D8FF" visible="false" />
