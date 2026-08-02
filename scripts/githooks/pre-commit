@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Validate BrightScript before every commit — bsc catches undefined functions,
+# shadowed names, and syntax errors in under a second.
+# Enable once per clone: git config core.hooksPath scripts/githooks
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+npx bsc --rootDir . --createPackage false >/dev/null 2>&1 || {
+    echo "pre-commit: BrightScript validation failed — run: npx bsc --rootDir . --createPackage false"
+    npx bsc --rootDir . --createPackage false 2>&1 | grep -E "error" | head -10
+    exit 1
+}

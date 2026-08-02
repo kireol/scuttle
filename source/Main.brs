@@ -26,6 +26,11 @@ sub Main(args as dynamic)
             if info <> invalid and info.cmd <> invalid and info.cmd = "addserver"
                 HandleAddServer(info)
                 scene.serversChanged = true
+            else if info <> invalid and info.cmd <> invalid and info.cmd = "runtests"
+                ' Instant-Resume devices only RESUME on ECP launch, so the
+                ' RunTests launch arg is unreliable — this input command runs
+                ' the suite in the live app instead (see deploy.sh --test)
+                RunAllTests()
             end if
         end if
     end while

@@ -72,3 +72,39 @@ Status: implemented in same session (autonomous run; decisions recorded here)
   "mpr zero length playlist" even on the LAN — the 1s playlist window
   limitation, not purely bandwidth. The tier cascade now lands it in
   snapshot mode quickly, and the overlay makes the state visible.
+
+## Batch 3 (same day): recovery, dashboard UX, robustness, tooling
+
+- **Quiet auto-retry**: while downgraded to snapshots, a 3-minute timer
+  retries video from tier 0 behind the live stills (`m.quietRetry`); on
+  success the snapshots swap out for video and the stored tier resets, on
+  failure nothing visible happens.
+- **Snapshot placeholder**: the grid's last snapshot shows dimmed under
+  the spinner during the cascade — no more black loading screen.
+- **Screensaver keepalive**: snapshot mode loops a bundled 2s black clip
+  (`images/keepalive.mp4`) in the (covered) Video node, because only video
+  playback holds off the OS screensaver. Guarded by `m.keepalive` so the
+  state machine ignores it; stopped during quiet retries.
+- **Tier persistence** (`PrefStore.brs`): per-server tier + snapshot flag
+  in the registry with a 6h TTL; player sessions resume there. OK-retry,
+  quiet recovery, and downgrades all update it.
+- **Per-camera stream override**: OK inside the * overlay cycles
+  auto/_main/_sub/_roku for the current camera (stored per server+camera).
+- **Home**: clock top-right (settings toggle, default on), "Cycle Cameras"
+  menu item (player auto-advances on the configured dwell, default 10s),
+  activity badges from `/api/review?after=now-15m` polled every 60s, last
+  server tab + grid tile persisted, snapshots split across 3 worker tasks,
+  wall-clock refresh so Instant Resume shows fresh stills immediately.
+- **Settings list**: SERVERS / APP SETTINGS sections; new rows for clock
+  and cycle time.
+- **TLS**: per-server opt-in verification (registry-migrated field, edit
+  row, roUrlTransfer peer verification, Video HttpCertificatesFile).
+- **Registry guard**: warn on console when total usage passes ~24KB of the
+  32KB cap.
+- **Exit fix**: AppScene now swallows every back key at the root — during
+  screen transitions focus is in limbo and an unhandled back exited the
+  app silently (EXIT_USER_NAV, found on-device).
+- **Tooling**: tests triggered via ECP `input?cmd=runtests` (Instant
+  Resume ignores launch args), retrying deploy script, `scripts/smoke.sh`,
+  versioned pre-commit hook running bsc (`git config core.hooksPath
+  scripts/githooks`).
