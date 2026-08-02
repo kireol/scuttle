@@ -8,6 +8,21 @@ sub init()
     m.clockTimer.ObserveFieldScoped("fire", "onClockTick")
     m.actTimer = m.top.FindNode("actTimer")
     m.actTimer.ObserveFieldScoped("fire", "fetchActivity")
+    m.staleTimer = m.top.FindNode("staleTimer")
+    m.staleTimer.ObserveFieldScoped("fire", "onStaleTick")
+    m.lastSnapAt = {}
+    m.toast = m.top.FindNode("toast")
+    m.toastText = m.top.FindNode("toastText")
+    m.toastTimer = m.top.FindNode("toastTimer")
+    m.toastTimer.ObserveFieldScoped("fire", "hideToast")
+    m.toastCamera = ""
+    m.seenReviewIds = {}
+    m.seenSeeded = false
+    m.bgVideo = m.top.FindNode("bgVideo")
+    m.bgVideo.ObserveFieldScoped("state", "onBgState")
+    m.bgPlaying = false
+    m.kickTimer = m.top.FindNode("kickTimer")
+    m.kickTimer.ObserveFieldScoped("fire", "startBgKeepalive")
     m.grid.ObserveFieldScoped("itemSelected", "onTileSelected")
     m.grid.ObserveFieldScoped("itemFocused", "updateScrollbar")
     m.scrollTrack = m.top.FindNode("scrollTrack")
@@ -51,6 +66,10 @@ sub applyClockSetting()
 end sub
 
 sub onShown()
+    ' keepalive start is deferred: playing during scene construction wedges
+    ' the Video node with state stuck on "playing" and no actual session
+    m.kickTimer.control = "start"
+    m.staleTimer.control = "start"
     if m.sceneObserved = invalid
         ' react to servers added externally via the ECP input API
         m.sceneObserved = true
@@ -72,8 +91,92 @@ sub onServersChangedExternally()
 end sub
 
 sub onVisibleChange()
-    if not m.top.visible then stopSnapshots()
+    if not m.top.visible
+        stopSnapshots()
+        stopBgKeepalive()
+        hideToast()
+    else
+        startBgKeepalive()
+    end if
 end sub
+
+' --- screensaver guard for the dashboard grid: same trick as the player's
+' --- snapshot mode — a tiny offscreen looping clip keeps "video playing"
+' --- true so the OS screensaver never interrupts the wall display
+sub startBgKeepalive()
+    ' only trust "playing": a play issued during cold launch can wedge in
+    ' buffering (or vanish), so onStaleTick re-kicks with a stop+play until
+    ' it actually sticks
+    if m.bgVideo.state = "playing" then return
+    m.bgPlaying = true
+    m.bgVideo.control = "stop"
+    c = CreateObject("roSGNode", "ContentNode")
+    c.url = "pkg:/images/keepalive.mp4"
+    c.streamFormat = "mp4"
+    m.bgVideo.loop = true
+    m.bgVideo.content = c
+    m.bgVideo.control = "play"
+end sub
+
+sub stopBgKeepalive()
+    if not m.bgPlaying then return
+    m.bgPlaying = false
+    m.bgVideo.control = "stop"
+end sub
+
+sub onBgState()
+    if m.bgVideo.state = "error"
+        print "[home] bg keepalive errorCode="; m.bgVideo.errorCode; " msg="; m.bgVideo.errorMsg
+    end if
+end sub
+
+' --- stale tiles: when refreshes stop arriving (server down, task wedged,
+' --- network gone) the tile shows the image age instead of posing as live
+sub onStaleTick()
+    if not m.top.visible or m.grid.content = invalid then return
+    print "[home] staleTick bgState="; m.bgVideo.state
+    startBgKeepalive()   ' self-heal: cold-launch play can be dropped
+    threshold = AppSettings_Load().refreshSecs * 2
+    if threshold < 30 then threshold = 30
+    now = CreateObject("roDateTime").AsSeconds()
+    for i = 0 to m.grid.content.GetChildCount() - 1
+        tile = m.grid.content.GetChild(i)
+        if m.lastSnapAt.DoesExist(tile.cameraName)
+            age = now - m.lastSnapAt[tile.cameraName]
+            if age > threshold
+                tile.staleText = fmtAge(age)
+            else
+                tile.staleText = ""
+            end if
+        end if
+    end for
+end sub
+
+function fmtAge(secs as integer) as string
+    if secs < 120 then return StrI(secs).Trim() + "s ago"
+    if secs < 7200 then return StrI(Int(secs / 60)).Trim() + "m ago"
+    return StrI(Int(secs / 3600)).Trim() + "h ago"
+end function
+
+sub hideToast()
+    m.toast.visible = false
+    m.toastCamera = ""
+end sub
+
+' OK while a toast is up jumps to the alerting camera instead of the
+' focused tile / menu item; returns true when it consumed the press
+function tryToastJump() as boolean
+    if not m.toast.visible or m.toastCamera = "" then return false
+    cam = m.toastCamera
+    hideToast()
+    for i = 0 to m.cameras.Count() - 1
+        if m.cameras[i] = cam
+            openPlayer(i, false)
+            return true
+        end if
+    end for
+    return false
+end function
 
 sub reloadServers()
     stopSnapshots()
@@ -119,6 +222,7 @@ sub clearCameras()
     m.cameras = []
     m.liveStreams = {}
     m.liveStreamsSub = {}
+    m.lastSnapAt = {}
     m.grid.content = CreateObject("roSGNode", "ContentNode")
     m.gridTotalRows = 0
     updateScrollbar()
@@ -305,14 +409,39 @@ sub onActivity(ev as object)
     items = ParseJson(out.body)
     if items = invalid or GetInterface(items, "ifArray") = invalid then return
     active = {}
+    newest = invalid
     for each item in items
         if item.camera <> invalid then active[item.camera] = true
+        if item.id <> invalid and not m.seenReviewIds.DoesExist(item.id)
+            m.seenReviewIds[item.id] = true
+            ' toast only fresh high-severity items, and only after the first
+            ' poll has seeded what already existed (no storm on entry)
+            if m.seenSeeded and item.severity = "alert" then newest = item
+        end if
     end for
+    m.seenSeeded = true
+    if newest <> invalid and m.top.visible then showToast(newest)
     if m.grid.content = invalid then return
     for i = 0 to m.grid.content.GetChildCount() - 1
         tile = m.grid.content.GetChild(i)
         tile.hasActivity = active.DoesExist(tile.cameraName)
     end for
+end sub
+
+sub showToast(item as object)
+    labels = ""
+    if item.data <> invalid and item.data.objects <> invalid
+        for each obj in item.data.objects
+            if labels <> "" then labels = labels + ", "
+            labels = labels + obj
+        end for
+    end if
+    if labels = "" then labels = "Alert"
+    m.toastText.text = labels + " — " + item.camera + "   (OK to view)"
+    m.toastCamera = item.camera
+    m.toast.visible = true
+    m.toastTimer.control = "stop"
+    m.toastTimer.control = "start"
 end sub
 
 sub persistToken(newToken as string)
@@ -403,6 +532,7 @@ sub startSnapshots()
         t.server = m.server
         t.cameras = chunk
         t.refreshMs = refreshMs
+        t.bbox = AppSettings_Load().showBoxes = true
         t.tag = "w" + StrI(w).Trim() + "_"
         t.ObserveFieldScoped("result", "onSnapshot")
         t.ObserveFieldScoped("newToken", "onSnapToken")
@@ -433,6 +563,8 @@ sub onSnapshot(ev as object)
             if res.ok
                 tile.snapPath = res.path
                 tile.offline = false
+                tile.staleText = ""
+                m.lastSnapAt[res.camera] = CreateObject("roDateTime").AsSeconds()
             else
                 tile.offline = true
             end if
@@ -442,6 +574,7 @@ sub onSnapshot(ev as object)
 end sub
 
 sub onTileSelected()
+    if tryToastJump() then return
     st = AppSettings_Load()
     if st.lastGridIdx <> m.grid.itemSelected
         st.lastGridIdx = m.grid.itemSelected
@@ -470,6 +603,7 @@ sub openPlayer(startIndex as integer, cycleMode as boolean)
 end sub
 
 sub openMenuItem()
+    if tryToastJump() then return
     if m.servers.Count() = 0 and m.menuItems[m.menuIdx] <> "Settings"
         m.status.text = "Add a server first (Settings)"
         return

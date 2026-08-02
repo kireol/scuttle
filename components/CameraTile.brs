@@ -20,11 +20,27 @@ sub onContentChange()
     c.ObserveFieldScoped("snapPath", "onSnapChanged")
     c.ObserveFieldScoped("offline", "onOfflineChanged")
     c.ObserveFieldScoped("hasActivity", "onActivityChanged")
+    c.ObserveFieldScoped("staleText", "onStaleChanged")
     m.top.FindNode("name").text = c.cameraName
     if c.tileW > 0 then applySize(c.tileW, c.tileH)
     applySnap()
     applyOffline()
     onActivityChanged()
+    onStaleChanged()
+end sub
+
+' Stale snapshots get an age tag and a dimmed image so a dead feed can't
+' quietly pose as a live one
+sub onStaleChanged()
+    c = m.top.itemContent
+    if c = invalid then return
+    badge = m.top.FindNode("staleBadge")
+    badge.text = c.staleText
+    badge.visible = c.staleText <> ""
+    fade = 1.0
+    if c.staleText <> "" then fade = 0.45
+    m.snapA.opacity = fade
+    m.snapB.opacity = fade
 end sub
 
 sub onActivityChanged()
@@ -45,6 +61,7 @@ sub applySize(w as integer, h as integer)
     name.width = w
     name.translation = [0, h - 32]
     m.top.FindNode("badge").translation = [w - 100, h - 32]
+    m.top.FindNode("staleBadge").translation = [w - 150, 10]
     ring = m.top.FindNode("focusRing")
     ring.width = w
     ring.height = h

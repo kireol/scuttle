@@ -9,6 +9,11 @@
     <script type="text/brightscript" uri="pkg:/source/AppSettings.brs" />
     <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
     <children>
+        <!-- screensaver guard: looping clip behind the backdrop. The cover is
+             shifted 2px so a sliver of video stays visible — a fully occluded
+             (or offscreen) Video node gets its playback closed by the OS -->
+        <Video id="bgVideo" width="1920" height="1080" />
+        <Rectangle translation="[2, 0]" width="1920" height="1080" color="0x101418FF" />
         <Group id="tabRow" translation="[60, 36]" />
         <Group id="menuRow" translation="[60, 104]" />
         <MarkupGrid id="grid" translation="[60, 170]" itemComponentName="CameraTile"
@@ -24,7 +29,19 @@
              when nothing is playing, and two stacked times looks broken -->
         <Label id="clock" translation="[1560, 1004]" width="300" horizAlign="right"
                color="0xE0E6EAFF" font="font:LargeBoldSystemFont" visible="false" />
+        <!-- toast for fresh review alerts; OK while visible jumps to the camera -->
+        <Group id="toast" visible="false" translation="[460, 870]">
+            <Rectangle width="1000" height="6" color="0xFF6B6BFF" />
+            <Rectangle translation="[0, 6]" width="1000" height="84" color="0x101418F0" />
+            <Label id="toastText" translation="[30, 30]" width="940" color="0xE0E6EAFF"
+                   font="font:MediumBoldSystemFont" />
+        </Group>
         <Timer id="clockTimer" duration="10" repeat="true" />
         <Timer id="actTimer" duration="60" repeat="true" />
+        <Timer id="staleTimer" duration="30" repeat="true" />
+        <!-- delayed first start for the keepalive: a play issued during scene
+             construction wedges with state stuck on "playing" -->
+        <Timer id="kickTimer" duration="2" repeat="false" />
+        <Timer id="toastTimer" duration="6" repeat="false" />
     </children>
 </component>

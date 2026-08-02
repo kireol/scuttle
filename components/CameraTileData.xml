@@ -5,6 +5,8 @@
         <field id="snapPath" type="string" value="" />
         <field id="offline" type="boolean" value="false" />
         <field id="hasActivity" type="boolean" value="false" />
+        <!-- "3m ago" when the snapshot is older than it should be; "" = fresh -->
+        <field id="staleText" type="string" value="" />
         <field id="tileW" type="integer" value="0" />
         <field id="tileH" type="integer" value="0" />
     </interface>
