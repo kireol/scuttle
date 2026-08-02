@@ -23,6 +23,20 @@ sub init()
     m.hintShown = false
     m.infoPanel = m.top.FindNode("infoPanel")
     m.infoText = m.top.FindNode("infoText")
+    m.placeholder = m.top.FindNode("placeholder")
+    m.clockLabel = m.top.FindNode("clock")
+    m.clockTimer = m.top.FindNode("clockTimer")
+    m.clockTimer.ObserveFieldScoped("fire", "onClockTick")
+    m.retryTimer = m.top.FindNode("retryTimer")
+    m.retryTimer.ObserveFieldScoped("fire", "onRetryTick")
+    m.cycleTimer = m.top.FindNode("cycleTimer")
+    m.cycleTimer.ObserveFieldScoped("fire", "onCycleTick")
+    ' true while the tiny bundled clip plays under the snapshot posters to
+    ' hold off the OS screensaver (video playback suppresses it; refreshing
+    ' Posters do not)
+    m.keepalive = false
+    ' true while a background video retry runs behind live snapshots
+    m.quietRetry = false
     m.errorPanel = m.top.FindNode("errorPanel")
     m.errorDetail = m.top.FindNode("errorDetail")
     m.switcher = m.top.FindNode("switcher")
@@ -71,20 +85,50 @@ sub onShown()
     if not m.started
         m.started = true
         m.idx = m.top.startIndex
+        ' resume at the tier this server last landed on (6h TTL) instead of
+        ' re-walking the full 10s-per-source cascade
+        stored = TierStore_Get(m.top.server.id)
+        if stored <> invalid and m.top.server.liveMode <> "snapshot"
+            m.serverTier = stored.tier
+            m.serverSnapshot = (stored.snapshot = true)
+            print "[live] resuming stored tier="; m.serverTier; " snapshot="; m.serverSnapshot
+        end if
+        st = AppSettings_Load()
+        if st.showClock = true
+            onClockTick()
+            m.clockLabel.visible = true
+            m.clockTimer.control = "start"
+        end if
+        if m.top.cycleMode
+            m.cycleTimer.duration = st.cycleSecs
+            m.cycleTimer.control = "start"
+        end if
         buildSwitcher()
         startCam()
     end if
     m.top.SetFocus(true)
 end sub
 
+sub onClockTick()
+    m.clockLabel.text = TimeUtil_FormatClock()
+end sub
+
+sub onCycleTick()
+    ' don't yank the screen away while the user is interacting
+    if m.switcher.visible or m.infoPanel.visible then return
+    switchBy(1)
+end sub
+
 ' Fresh camera: rebuild the URL attempt chain, starting at the tier the
 ' server has already been downgraded to
 sub startCam()
     leaveSnapshotMode()
+    m.quietRetry = false
     cam = m.top.cameras[m.idx]
+    showPlaceholder(cam)
     if m.top.server.liveMode = "snapshot" or m.serverSnapshot
         ' snapshots by configuration, or video already proved hopeless for
-        ' this server this session
+        ' this server (this session or recently — see TierStore)
         enterSnapshotMode()
         showName(cam)
         return
@@ -94,6 +138,22 @@ sub startCam()
     if m.tierIdx >= m.tiers.Count() then m.tierIdx = m.tiers.Count() - 1
     m.attemptIdx = 0
     playCurrent()
+end sub
+
+' Last grid snapshot for this camera, dimmed, so the cascade never runs
+' against a black screen (snapPaths is index-aligned with cameras)
+sub showPlaceholder(cam as string)
+    m.placeholder.visible = false
+    m.placeholder.uri = ""
+    paths = m.top.snapPaths
+    if paths <> invalid and m.idx < paths.Count() and paths[m.idx] <> ""
+        m.placeholder.uri = paths[m.idx]
+        m.placeholder.visible = true
+    end if
+end sub
+
+sub hidePlaceholder()
+    m.placeholder.visible = false
 end sub
 
 ' --- snapshot-mode fallback: full-screen refreshing stills when no video
@@ -110,6 +170,10 @@ sub enterSnapshotMode()
     m.snapFails = 0
     m.loadingLabel.text = "Loading snapshot mode ..."
     m.loadingLabel.visible = true
+    startKeepalive()
+    ' downgraded here (vs. snapshot by configuration): quietly retry video
+    ' every few minutes so a transient failure recovers on its own
+    if m.top.server.liveMode <> "snapshot" then m.retryTimer.control = "start"
     if m.infoPanel.visible then updateInfoPanel()
     ' Snapshot sources in preference order: go2rtc frame.jpeg gives FULL
     ' resolution frames from the main stream (Frigate's latest.jpg only has
@@ -160,6 +224,8 @@ end sub
 
 sub leaveSnapshotMode()
     stopSnapTask()
+    stopKeepalive()
+    m.retryTimer.control = "stop"
     m.snapMode = false
     m.snapA.visible = false
     m.snapB.visible = false
@@ -186,6 +252,7 @@ sub onLiveSnap(ev as object)
     end if
     m.snapFails = 0
     m.loadingLabel.visible = false
+    hidePlaceholder()
     if m.snapFront.uri = ""
         m.snapFront.uri = res.path
         m.snapFront.visible = true
@@ -212,6 +279,41 @@ sub stopWarmTask()
     end if
 end sub
 
+' --- screensaver guard: play a bundled 2s black clip on loop underneath the
+' --- snapshot posters; video playback is the only thing that reliably holds
+' --- off the OS screensaver, which otherwise interrupts a wall dashboard
+sub startKeepalive()
+    if m.keepalive then return
+    m.keepalive = true
+    content = CreateObject("roSGNode", "ContentNode")
+    content.url = "pkg:/images/keepalive.mp4"
+    content.streamFormat = "mp4"
+    m.video.loop = true
+    m.video.content = content
+    m.video.control = "play"
+end sub
+
+sub stopKeepalive()
+    if not m.keepalive then return
+    m.keepalive = false
+    m.video.loop = false
+    m.video.control = "stop"
+end sub
+
+' Every few minutes while downgraded: retry video from full quality behind
+' the live snapshots; the user only notices if it works
+sub onRetryTick()
+    if not m.snapMode or m.quietRetry then return
+    if m.top.server.liveMode = "snapshot" then return
+    print "[live] quiet video retry"
+    m.quietRetry = true
+    stopKeepalive()
+    buildTiers(m.top.cameras[m.idx])
+    m.tierIdx = 0
+    m.attemptIdx = 0
+    playCurrent()
+end sub
+
 sub playCurrent()
     cam = m.top.cameras[m.idx]
     m.errorPanel.visible = false
@@ -231,8 +333,10 @@ sub playCurrent()
     m.masterTask = t
     m.watchdog.control = "stop"
     m.watchdog.control = "start"
-    showLoading()
-    showName(cam)
+    if not m.quietRetry
+        showLoading()
+        showName(cam)
+    end if
 end sub
 
 ' "Loading back_garage_sub (proxy) ..." while a source is being tried
@@ -316,8 +420,9 @@ sub onWarmup(ev as object)
     content.live = true
     headers = authHeaderStrings()
     if headers.Count() > 0 then content.HttpHeaders = headers
-    ' No HttpCertificatesFile: the Video node only verifies TLS when a CA bundle
-    ' is set, and Frigate's built-in cert is self-signed
+    ' The Video node only verifies TLS when a CA bundle is set; Frigate's
+    ' built-in cert is self-signed, so verification is opt-in per server
+    if m.top.server.verifyTls = true then content.HttpCertificatesFile = "common:/certs/ca-bundle.crt"
     m.video.content = content
     m.video.control = "play"
 end sub
@@ -330,16 +435,26 @@ sub advanceAttempt()
     else if m.tierIdx < m.tiers.Count() - 1
         m.tierIdx = m.tierIdx + 1
         m.attemptIdx = 0
-        if m.tierIdx > m.serverTier
+        if not m.quietRetry and m.tierIdx > m.serverTier
             ' downgrade the whole server: other cameras skip the tiers above
             m.serverTier = m.tierIdx
+            TierStore_Set(m.top.server.id, m.serverTier, false)
             print "[live] server downgraded to tier "; m.serverTier
         end if
         playCurrent()
+    else if m.quietRetry
+        ' background retry exhausted every source — stay on the snapshots
+        ' the user is already watching and try again next tick
+        print "[live] quiet retry failed; staying in snapshot mode"
+        m.quietRetry = false
+        m.watchdog.control = "stop"
+        m.video.control = "stop"
+        startKeepalive()
     else
         ' out of video sources — fall back to refreshing snapshots, and take
         ' every camera on this server along
         m.serverSnapshot = true
+        TierStore_Set(m.top.server.id, m.serverTier, true)
         enterSnapshotMode()
     end if
 end sub
@@ -369,6 +484,9 @@ sub buildTiers(cam as string)
     streams = m.top.liveStreams
     if streams <> invalid and streams.DoesExist(cam) then main = streams[cam]
     pref = m.top.server.streamType
+    ' a per-camera override (set from the * overlay) beats the server default
+    override = CamStream_Get(m.top.server.id, cam)
+    if override <> "" then pref = override
     if pref <> invalid and pref <> "" and pref <> "auto"
         names = [Frigate_StreamNameForType(main, pref)]
     else
@@ -426,13 +544,24 @@ sub hideName()
 end sub
 
 sub onVideoState()
+    if m.keepalive then return   ' the screensaver-guard clip is not a stream
     state = m.video.state
     print "[live] state="; state
     if state = "playing"
+        if m.quietRetry
+            ' background retry succeeded — swap the snapshots out for video
+            print "[live] quiet retry recovered video at tier "; m.tierIdx
+            m.quietRetry = false
+            m.serverSnapshot = false
+            m.serverTier = m.tierIdx
+            TierStore_Set(m.top.server.id, m.serverTier, false)
+            leaveSnapshotMode()
+        end if
         m.watchdog.control = "stop"
         stopWarmTask()
         startFpsPolling()
         m.loadingLabel.visible = false
+        hidePlaceholder()
         if not m.hintShown
             ' once per player session, on the first camera that plays
             m.hintShown = true
@@ -482,10 +611,40 @@ end sub
 
 sub onStopPlayback()
     m.watchdog.control = "stop"
+    m.cycleTimer.control = "stop"
+    m.clockTimer.control = "stop"
     stopWarmTask()
     stopFpsPolling()
+    leaveSnapshotMode()   ' also stops the retry timer and keepalive clip
     m.video.control = "stop"
-    leaveSnapshotMode()
+    hidePlaceholder()
+end sub
+
+' OK inside the * overlay: cycle this camera's stream override through
+' auto + the variants that exist for it, then restart with the new pick
+sub cycleCamOverride()
+    cam = m.top.cameras[m.idx]
+    main = cam
+    streams = m.top.liveStreams
+    if streams <> invalid and streams.DoesExist(cam) then main = streams[cam]
+    subName = ""
+    subs = m.top.liveStreamsSub
+    if subs <> invalid and subs.DoesExist(cam) then subName = subs[cam]
+    options = ["auto"]
+    options.Append(Frigate_StreamTypes(Frigate_LiveStreamNames(main, subName)))
+    cur = CamStream_Get(m.top.server.id, cam)
+    if cur = "" then cur = "auto"
+    idx = 0
+    for i = 0 to options.Count() - 1
+        if options[i] = cur then idx = i
+    end for
+    choice = options[(idx + 1) mod options.Count()]
+    CamStream_Set(m.top.server.id, cam, choice)
+    print "[live] stream override for "; cam; ": "; choice
+    ' picking a stream implies the user wants video — retry even if downgraded
+    m.serverSnapshot = false
+    startCam()
+    updateInfoPanel()
 end sub
 
 ' --- FPS overlay: Roku's Video node doesn't expose decoder frame rate, so
@@ -582,6 +741,9 @@ sub updateInfoPanel()
     if m.tiers.Count() > 0
         txt = txt + nl + "Quality tier: " + StrI(m.serverTier + 1).Trim() + " of " + StrI(m.tiers.Count()).Trim()
     end if
+    ov = CamStream_Get(m.top.server.id, cam)
+    if ov = "" then ov = "auto"
+    txt = txt + nl + "Stream override: " + ov + "  (OK cycles)"
     m.infoText.text = txt
 end sub
 
@@ -603,7 +765,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
         end if
         return false
     end if
-    if key = "options"
+    if m.infoPanel.visible and key = "OK"
+        cycleCamOverride() : return true
+    else if m.infoPanel.visible and key = "back"
+        toggleInfoPanel() : return true
+    else if key = "options"
         toggleInfoPanel() : return true
     else if key = "left"
         switchBy(-1) : return true
@@ -614,6 +780,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             ' retry real video from full quality — undo the server-wide downgrade
             m.serverSnapshot = false
             m.serverTier = 0
+            TierStore_Set(m.top.server.id, 0, false)
             startCam()
         else
             m.switcher.visible = true
