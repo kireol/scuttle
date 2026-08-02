@@ -171,15 +171,19 @@ end sub
 
 sub onSelect()
     item = m.events[m.grid.itemSelected]
-    if item.has_clip <> invalid and item.has_clip = false
-        m.status.text = "This event has no clip"
-        return
-    end if
     srv = ServerStore_GetById(m.top.server.id)
     if srv = invalid then srv = m.top.server
+    ' Padded VOD range instead of clip.mp4: clips of 1-2s events flash and
+    ' close, and the range player behaves identically to Review playback
+    endTs = item.end_time
+    if endTs = invalid then endTs = item.start_time + 30
+    startTs = item.start_time - 10
+    endTs = endTs + 15
+    if endTs - startTs < 40 then endTs = startTs + 40
+    url = Frigate_VodRangeUrl(srv, item.camera, startTs, endTs)
     player = CreateObject("roSGNode", "VodPlayerScreen")
     player.server = srv
-    player.playlist = [{ url: srv.baseUrl + Frigate_EventClipPath(item.id), title: item.label + " — " + item.camera, format: "mp4" }]
+    player.playlist = [{ url: url, title: item.label + " — " + item.camera, format: "hls" }]
     player.startIndex = 0
     m.top.GetScene().CallFunc("pushScreen", player)
 end sub

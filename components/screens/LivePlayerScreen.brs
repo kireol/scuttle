@@ -11,7 +11,7 @@ sub init()
     m.snapMode = false
     m.snapFails = 0
     m.camName = m.top.FindNode("camName")
-    m.fpsLabel = m.top.FindNode("fpsLabel")
+    m.modeIcon = m.top.FindNode("modeIcon")
     m.fpsTimer = m.top.FindNode("fpsTimer")
     m.fpsTimer.ObserveFieldScoped("fire", "onFpsTick")
     m.fpsTask = invalid
@@ -122,6 +122,7 @@ sub onShown()
         if st.showClock = true
             onClockTick()
             m.clockLabel.visible = true
+            m.modeIcon.visible = true
             m.clockTimer.control = "start"
         end if
         if m.top.cycleMode
@@ -214,6 +215,7 @@ sub enterSnapshotMode()
     m.errorPanel.visible = false
     m.snapMode = true
     m.snapFails = 0
+    m.modeIcon.text = "■"
     m.loadingLabel.text = "Loading snapshots ..."
     m.loadingLabel.visible = true
     startKeepalive()
@@ -710,6 +712,7 @@ sub onVideoState()
         m.watchdog.control = "stop"
         stopWarmTask()
         startFpsPolling()
+        m.modeIcon.text = "▶"
         m.lastPos = -1
         m.stallCount = 0
         m.stallTimer.control = "start"
@@ -813,7 +816,6 @@ end sub
 
 sub stopFpsPolling()
     m.fpsTimer.control = "stop"
-    m.fpsLabel.visible = false
 end sub
 
 sub onFpsTick()
@@ -841,10 +843,6 @@ sub onFpsStats(ev as object)
     ' one decimal is enough ("5.1 fps"); Str() of a float pads a leading space
     rounded = Int(fps * 10 + 0.5) / 10.0
     m.lastFps = Str(rounded).Trim() + " fps"
-    if m.video.state = "playing"
-        m.fpsLabel.text = m.lastFps
-        m.fpsLabel.visible = true
-    end if
     if m.infoPanel.visible then updateInfoPanel()
 end sub
 

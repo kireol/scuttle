@@ -117,11 +117,17 @@ sub onSelect()
     print "[review] select idx="; m.list.itemSelected; " item: "; FormatJson(item)
     endTs = item.end_time
     if endTs = invalid then endTs = item.start_time + 60
+    ' Pad the range: alerts can be 1-2s long while Frigate's VOD segments run
+    ' ~12s, so an unpadded window is often an empty playlist that Roku kills
+    ' with "zero length playlist". Padding also gives useful context.
+    startTs = item.start_time - 10
+    endTs = endTs + 15
+    if endTs - startTs < 40 then endTs = startTs + 40
     srv = ServerStore_GetById(m.top.server.id)
     if srv = invalid then srv = m.top.server
     ' Frigate_VodRangeUrl keeps LongInteger precision; StrI(Int(epoch)) mangles
     ' epochs through 32-bit float
-    url = Frigate_VodRangeUrl(srv, item.camera, item.start_time, endTs)
+    url = Frigate_VodRangeUrl(srv, item.camera, startTs, endTs)
     player = CreateObject("roSGNode", "VodPlayerScreen")
     player.server = srv
     player.playlist = [{ url: url, title: item.camera + " — " + TimeUtil_FormatEpoch(item.start_time), format: "hls" }]

@@ -23,6 +23,7 @@ end sub
 sub playCurrent()
     item = m.top.playlist[m.idx]
     m.errorPanel.visible = false
+    m.everPlayed = false
     m.video.control = "stop"
     content = CreateObject("roSGNode", "ContentNode")
     content.url = item.url
@@ -60,12 +61,19 @@ end sub
 
 sub onVideoState()
     state = m.video.state
+    if state = "playing" then m.everPlayed = true
     if state = "error"
         item = m.top.playlist[m.idx]
         m.errorDetail.text = item.title + chr(10) + Frigate_FriendlyVideoError(m.video.errorCode, m.video.errorMsg) + "  (code " + StrI(m.video.errorCode).Trim() + ")"
         m.errorPanel.visible = true
     else if state = "finished"
-        if m.idx < m.top.playlist.Count() - 1
+        if not m.everPlayed
+            ' "finished" without a single played frame = empty/broken stream;
+            ' closing silently here looked like "nothing happened"
+            item = m.top.playlist[m.idx]
+            m.errorDetail.text = item.title + chr(10) + "Nothing was recorded for this time range"
+            m.errorPanel.visible = true
+        else if m.idx < m.top.playlist.Count() - 1
             m.idx = m.idx + 1
             playCurrent()
         else
