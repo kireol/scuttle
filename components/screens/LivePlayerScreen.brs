@@ -28,6 +28,11 @@ sub init()
     m.hintShown = false
     m.infoPanel = m.top.FindNode("infoPanel")
     m.infoText = m.top.FindNode("infoText")
+    m.infoBg = m.top.FindNode("infoBg")
+    m.playUrl = ""
+    ' next-camera snapshot prefetch for seamless cycle hops
+    m.prefetch = invalid
+    m.prefetchTask = invalid
     m.placeholder = m.top.FindNode("placeholder")
     m.videoCover = m.top.FindNode("videoCover")
     m.clockLabel = m.top.FindNode("clock")
@@ -203,9 +208,12 @@ sub onTourConfig(ev as object)
         return
     end if
     m.tourHops = 0
-    print "[live] tour: now on "; srv.name; " ("; parsed.cameras.Count(); " cameras)"
+    cams = parsed.cameras
+    filtered = Frigate_FilterCycleCams(cams, [], srv.cycleCams)
+    if filtered <> invalid then cams = filtered.cameras
+    print "[live] tour: now on "; srv.name; " ("; cams.Count(); " cameras)"
     m.top.server = srv
-    m.top.cameras = parsed.cameras
+    m.top.cameras = cams
     m.top.liveStreams = parsed.liveStreams
     m.top.liveStreamsSub = parsed.liveStreamsSub
     m.top.snapPaths = []
@@ -235,6 +243,29 @@ sub startCam()
     enterSnapshotMode()
     showName(cam)
     if m.top.server.liveMode <> "snapshot" then startBgVideoAttempt()
+    prefetchNextCam()
+end sub
+
+' During a tour, quietly fetch the NEXT camera's snapshot so the hop swaps
+' straight to a fresh full-opacity image instead of a "Loading..." screen
+sub prefetchNextCam()
+    if not m.top.cycleMode then return
+    cnt = m.top.cameras.Count()
+    if cnt < 2 then return
+    if m.prefetchTask <> invalid then m.prefetchTask.UnobserveFieldScoped("result")
+    nxt = (m.idx + 1) mod cnt
+    cam = m.top.cameras[nxt]
+    t = CreateObject("roSGNode", "ThumbTask")
+    t.server = m.top.server
+    t.items = [{ key: cam, path: Frigate_SnapshotPath(cam, 1080), savePath: "tmp:/cyc_" + cam + ".jpg" }]
+    t.ObserveFieldScoped("result", "onPrefetch")
+    t.control = "RUN"
+    m.prefetchTask = t
+end sub
+
+sub onPrefetch(ev as object)
+    res = ev.GetData()
+    m.prefetch = { cam: res.key, path: res.savePath, ok: res.ok = true }
 end sub
 
 ' Background video cascade behind the live snapshots. fromTier -1 = start
@@ -259,6 +290,14 @@ end sub
 sub showPlaceholder(cam as string)
     m.placeholder.visible = false
     m.placeholder.uri = ""
+    m.placeholder.opacity = 0.45
+    ' a prefetched tour snapshot is seconds old — show it full strength
+    if m.prefetch <> invalid and m.prefetch.ok and m.prefetch.cam = cam
+        m.placeholder.uri = m.prefetch.path
+        m.placeholder.opacity = 1.0
+        m.placeholder.visible = true
+        return
+    end if
     paths = m.top.snapPaths
     if paths <> invalid and m.idx < paths.Count() and paths[m.idx] <> ""
         m.placeholder.uri = paths[m.idx]
@@ -285,7 +324,8 @@ sub enterSnapshotMode()
     m.modeIcon.text = "●"   ' ▶ = live video; ● = snapshots (■ has no glyph)
     m.videoCover.visible = true
     m.loadingLabel.text = "Loading..."
-    m.loadingLabel.visible = true
+    ' skip the label when a fresh prefetched image is already on screen
+    m.loadingLabel.visible = not m.placeholder.visible
     startKeepalive()
     ' downgraded here (vs. snapshot by configuration): quietly retry video
     ' every few minutes so a transient failure recovers on its own
@@ -531,6 +571,13 @@ sub onMaster(ev as object)
     ' resolve relative to the master URL's directory
     if Left(mediaUrl, 4) <> "http" then mediaUrl = Frigate_HlsBaseUrl(out.context) + mediaUrl
     print "[live] media playlist: "; mediaUrl
+    ' MediaMTX carries audio as a separate rendition reachable only via the
+    ' master, so hand Roku the master when it declares no HEVC codec (the
+    ' media-playlist workaround is only needed for hvc1-declaring masters)
+    m.playUrl = mediaUrl
+    if isMtxUrl(out.context) and Instr(1, out.body, "hev") = 0 and Instr(1, out.body, "hvc") = 0
+        m.playUrl = out.context
+    end if
     ' Warm the session up before handing it to Roku: a freshly created go2rtc
     ' HLS session has no segments for the first moments, and OS 15.3 treats an
     ' empty media playlist as fatal ("mpr zero length playlist") instead of
@@ -592,7 +639,7 @@ sub onWarmup(ev as object)
     ' inside HLS/DASH. No content.title: Roku overlays its own title UI on top
     ' of our camName label, showing the name twice.
     content = CreateObject("roSGNode", "ContentNode")
-    content.url = m.mediaUrl
+    content.url = m.playUrl
     content.streamFormat = "hls"
     content.live = true
     headers = authHeaderStrings()
@@ -842,6 +889,14 @@ sub switchBy(delta as integer)
     startCam()
 end sub
 
+' Manual left/right during a tour gives the chosen camera a full dwell
+sub restartCycleDwell()
+    if m.top.cycleMode
+        m.cycleTimer.control = "stop"
+        m.cycleTimer.control = "start"
+    end if
+end sub
+
 sub onStopPlayback()
     m.watchdog.control = "stop"
     m.stallTimer.control = "stop"
@@ -979,7 +1034,7 @@ sub updateInfoPanel()
     ov = CamStream_Get(m.top.server.id, cam)
     if ov = "" then ov = "auto"
     txt = txt + nl + "Stream override: " + ov + "  (OK cycles)"
-    ' the fallback trail; last 4 attempts shown
+    ' the fallback trail; last 4 attempts shown (background sized after)
     if m.attemptLog <> invalid and m.attemptLog.Count() > 0
         txt = txt + nl + "Tried  (x failed, > trying, OK playing):"
         first = m.attemptLog.Count() - 4
@@ -993,6 +1048,9 @@ sub updateInfoPanel()
         txt = txt + nl + "see README, 'Live video reliability'"
     end if
     m.infoText.text = txt
+    ' size the dark backdrop to the text so long trails never overflow it
+    r = m.infoText.boundingRect()
+    m.infoBg.height = r.height + 48
 end sub
 
 ' Friendly name for a spot in the downgrade chain: the first choice is
@@ -1029,10 +1087,22 @@ function onKeyEvent(key as string, press as boolean) as boolean
         ' up mirrors * because Roku TVs reserve * for their own picture
         ' settings sidebar during video playback
         toggleInfoPanel() : return true
+    else if key = "OK" and m.top.cycleMode
+        ' OK during a tour: stop cycling and stay on this camera
+        m.top.cycleMode = false
+        m.cycleTimer.control = "stop"
+        m.hintLabel.text = "Cycling stopped"
+        m.hintLabel.visible = true
+        m.hintTimer.control = "start"
+        return true
     else if key = "left"
-        switchBy(-1) : return true
+        switchBy(-1)
+        restartCycleDwell()
+        return true
     else if key = "right"
-        switchBy(1) : return true
+        switchBy(1)
+        restartCycleDwell()
+        return true
     else if key = "OK" or key = "down"
         if (m.errorPanel.visible or (m.snapMode and key = "OK")) and m.top.server.liveMode <> "snapshot"
             ' retry real video from full quality — undo the server-wide downgrade

@@ -97,6 +97,27 @@ function Frigate_ParseCameraConfig(cfg as object) as object
     return out
 end function
 
+' Cycle-camera selection filter: keep only the wanted cameras (with their
+' index-aligned snapshot paths). Returns invalid when there is nothing to
+' filter or the filter would leave no cameras (fall back to all).
+function Frigate_FilterCycleCams(cameras as object, paths as object, wanted as dynamic) as dynamic
+    if wanted = invalid or wanted.Count() = 0 then return invalid
+    want = {}
+    for each c in wanted
+        want[c] = true
+    end for
+    fc = []
+    fp = []
+    for i = 0 to cameras.Count() - 1
+        if want.DoesExist(cameras[i])
+            fc.Push(cameras[i])
+            if i < paths.Count() then fp.Push(paths[i]) else fp.Push("")
+        end if
+    end for
+    if fc.Count() = 0 then return invalid
+    return { cameras: fc, paths: fp }
+end function
+
 ' Distinct stream-type suffixes present in a list of go2rtc stream names,
 ' e.g. ["front_main","front_sub","back_main"] -> ["_main","_sub"]. A suffix
 ' counts as a type when it is a known convention (_main/_sub/_roku) or

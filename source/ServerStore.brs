@@ -15,6 +15,7 @@ function ServerStore_Load() as object
                 if not s.DoesExist("verifyTls") then s.verifyTls = false
                 if not s.DoesExist("mediamtxPort") then s.mediamtxPort = 8888
                 if not s.DoesExist("mediamtxOk") then s.mediamtxOk = false
+                if not s.DoesExist("cycleCams") then s.cycleCams = []
             end for
             return data
         end if
@@ -93,5 +94,6 @@ function ServerStore_NewServer() as object
         verifyTls: false
         mediamtxPort: 8888
         mediamtxOk: false
+        cycleCams: []
     }
 end function

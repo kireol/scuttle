@@ -591,9 +591,22 @@ sub onTileSelected()
 end sub
 
 sub openPlayer(startIndex as integer, cycleMode as boolean, openInfo = false as boolean)
+    cams = m.cameras
+    paths = []
+    if m.grid.content <> invalid
+        for i = 0 to m.grid.content.GetChildCount() - 1
+            paths.Push(m.grid.content.GetChild(i).snapPath)
+        end for
+    end if
+    ' the tour honors the per-server cycle-camera selection (empty = all)
+    if cycleMode then filtered = Frigate_FilterCycleCams(cams, paths, m.server.cycleCams) else filtered = invalid
+    if filtered <> invalid
+        cams = filtered.cameras
+        paths = filtered.paths
+    end if
     player = CreateObject("roSGNode", "LivePlayerScreen")
     player.server = m.server
-    player.cameras = m.cameras
+    player.cameras = cams
     player.startIndex = startIndex
     player.cycleMode = cycleMode
     player.openInfo = openInfo
@@ -604,12 +617,6 @@ sub openPlayer(startIndex as integer, cycleMode as boolean, openInfo = false as 
     player.liveStreams = m.liveStreams
     player.liveStreamsSub = m.liveStreamsSub
     player.portFirst = AppSettings_Load().livePortFirst
-    paths = []
-    if m.grid.content <> invalid
-        for i = 0 to m.grid.content.GetChildCount() - 1
-            paths.Push(m.grid.content.GetChild(i).snapPath)
-        end for
-    end if
     player.snapPaths = paths
     m.top.GetScene().CallFunc("pushScreen", player)
 end sub
