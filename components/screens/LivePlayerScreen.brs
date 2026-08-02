@@ -38,6 +38,8 @@ sub init()
     m.masterRetryTimer = m.top.FindNode("masterRetryTimer")
     m.masterRetryTimer.ObserveFieldScoped("fire", "onMasterRetry")
     m.masterTries = 0
+    m.warmupTimer = m.top.FindNode("warmupTimer")
+    m.warmupTimer.ObserveFieldScoped("fire", "fetchWarmup")
     m.cycleTimer = m.top.FindNode("cycleTimer")
     m.cycleTimer.ObserveFieldScoped("fire", "onCycleTick")
     ' true while the tiny bundled clip plays under the snapshot posters to
@@ -438,14 +440,27 @@ sub onWarmup(ev as object)
     out = ev.GetData()
     if out.context <> m.mediaUrl then return   ' stale
     m.warmupTask = invalid
-    hasSegment = false
-    if out.ok and Frigate_PlaylistEntries(out.body).Count() > 0 then hasSegment = true
-    if not hasSegment
+    segs = 0
+    if out.ok then segs = Frigate_PlaylistEntries(out.body).Count()
+    ' MediaMTX: wait for real runway (3 segments) before attaching Roku's
+    ' player — attaching at 1-2 segments strands it at the live edge and it
+    ' stalls to death. Paced retries; the watchdog caps the total wait.
+    need = 1
+    maxTries = 5
+    if isMtxUrl(currentUrl())
+        need = 3
+        maxTries = 15
+    end if
+    if segs < need
         m.warmupTries = m.warmupTries + 1
-        if m.warmupTries < 5
-            fetchWarmup()
+        if m.warmupTries < maxTries
+            if need > 1
+                m.warmupTimer.control = "start"
+            else
+                fetchWarmup()
+            end if
         else
-            print "[live] warmup: playlist never gained segments"
+            print "[live] warmup: playlist never gained enough segments (got "; segs; ")"
             advanceAttempt()
         end if
         return
@@ -558,6 +573,18 @@ sub buildTiers(cam as string)
     ' Cloudflare-fronted servers: the raw port is blackholed (connections
     ' hang, costing a full watchdog cycle each), so don't even try it
     useRaw = m.top.portFirst and m.top.server.cfProxied <> true
+    if useMtx
+        ' via MediaMTX prefer the h264 _roku restream: HEVC mains stall (huge
+        ' GOP segments, PCMU audio that fMP4 can't carry); _roku is built for this
+        reordered = []
+        for each n in names
+            if Right(n, 5) = "_roku" then reordered.Push(n)
+        end for
+        for each n in names
+            if Right(n, 5) <> "_roku" then reordered.Push(n)
+        end for
+        names = reordered
+    end if
     print "[live] buildTiers "; cam; " mtx="; useMtx; " cfProxied="; m.top.server.cfProxied; " names="; FormatJson(names)
     tiers = []
     for each n in names
