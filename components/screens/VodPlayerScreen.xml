@@ -9,6 +9,7 @@
         <field id="stopPlayback" type="boolean" value="false" onChange="onStopPlayback" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/screens/VodPlayerScreen.brs" />
+    <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
     <children>
         <Video id="video" width="1920" height="1080" />
         <Label id="titleLabel" translation="[60, 40]" color="0xFFFFFFFF"

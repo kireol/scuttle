@@ -30,7 +30,8 @@ sub playCurrent()
     content.title = item.title
     headers = authHeaderStrings()
     if headers.Count() > 0 then content.HttpHeaders = headers
-    if Left(item.url, 8) = "https://" then content.HttpCertificatesFile = "common:/certs/ca-bundle.crt"
+    ' No HttpCertificatesFile: the Video node only verifies TLS when a CA bundle
+    ' is set, and Frigate's built-in cert is self-signed
     m.video.content = content
     m.video.control = "play"
     m.titleLabel.text = item.title
@@ -60,7 +61,7 @@ sub onVideoState()
     state = m.video.state
     if state = "error"
         item = m.top.playlist[m.idx]
-        m.errorDetail.text = item.title + chr(10) + "Error: " + m.video.errorMsg + " (code " + StrI(m.video.errorCode).Trim() + ")" + chr(10) + "URL: " + item.url
+        m.errorDetail.text = item.title + chr(10) + Frigate_FriendlyVideoError(m.video.errorCode, m.video.errorMsg) + "  (code " + StrI(m.video.errorCode).Trim() + ")"
         m.errorPanel.visible = true
     else if state = "finished"
         if m.idx < m.top.playlist.Count() - 1

@@ -7,8 +7,12 @@ function doRequest(url as string, headers as object, method as string, body as s
     xfer.RetainBodyOnError(true)
     xfer.EnableEncodings(true)
     if Left(url, 8) = "https://"
+        ' Frigate's built-in TLS (port 8971) uses a self-signed cert, which fails
+        ' CA-bundle verification (curl error 60) — accept it for LAN servers
         xfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
         xfer.InitClientCertificates()
+        xfer.EnablePeerVerification(false)
+        xfer.EnableHostVerification(false)
     end if
     for each k in headers
         xfer.AddHeader(k, headers[k])
