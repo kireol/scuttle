@@ -12,6 +12,9 @@
         <field id="portFirst" type="boolean" value="true" />
         <field id="cycleMode" type="boolean" value="false" />
         <field id="openInfo" type="boolean" value="false" />
+        <!-- when set (cycle-all-servers), the tour hops servers at the end of
+             each camera list; the player fetches each server's config itself -->
+        <field id="tourServers" type="array" />
         <field id="stopPlayback" type="boolean" value="false" onChange="onStopPlayback" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/screens/LivePlayerScreen.brs" />
@@ -36,7 +39,7 @@
         <Label id="camName" translation="[60, 40]" color="0xFFFFFFFF"
                font="font:LargeBoldSystemFont" visible="false" />
         <!-- bottom-right, away from the OS screensaver clock (top-right);
-             modeIcon: ■ = snapshots, ▶ = live video -->
+             modeIcon: ● = snapshots, ▶ = live video -->
         <Label id="modeIcon" translation="[1652, 1000]" width="44"
                color="0xFFFFFFFF" visible="false" />
         <Label id="clock" translation="[1560, 1000]" width="300" horizAlign="right"

@@ -38,6 +38,9 @@ function buildRows() as object
     if m.settings.showBoxes = true then boxesLabel = "on"
     rows.Push({ kind: "boxes", title: "  Motion boxes on snapshots: " + boxesLabel })
     rows.Push({ kind: "cycle", title: "  Camera cycle time: " + StrI(m.settings.cycleSecs).Trim() + "s" })
+    scopeLabel = "single server"
+    if m.settings.cycleScope = "all" then scopeLabel = "cycle all servers"
+    rows.Push({ kind: "cycleScope", title: "  Cycle camera mode: " + scopeLabel })
     return rows
 end function
 
@@ -89,6 +92,12 @@ sub onSelect()
             if cycle[i] = m.settings.cycleSecs then cur = i
         end for
         m.settings.cycleSecs = cycle[(cur + 1) mod cycle.Count()]
+    else if row.kind = "cycleScope"
+        if m.settings.cycleScope = "all"
+            m.settings.cycleScope = "single"
+        else
+            m.settings.cycleScope = "all"
+        end if
     else
         return   ' header row — nothing to do
     end if
