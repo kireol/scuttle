@@ -30,7 +30,8 @@
                font="font:LargeBoldSystemFont" visible="false" />
         <Label id="fpsLabel" translation="[1560, 40]" width="300" horizAlign="right"
                color="0xFFFFFFB0" visible="false" />
-        <Label id="clock" translation="[1560, 88]" width="300" horizAlign="right"
+        <!-- bottom-right, away from the OS screensaver clock (top-right) -->
+        <Label id="clock" translation="[1560, 1000]" width="300" horizAlign="right"
                color="0xE0E6EAB0" visible="false" />
         <!-- which stream (or snapshot mode) is currently being tried -->
         <Label id="loadingLabel" translation="[60, 1000]" color="0x8A959CFF" visible="false" />

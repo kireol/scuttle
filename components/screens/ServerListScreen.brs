@@ -53,6 +53,7 @@ end sub
 
 sub onSelect()
     row = m.rows[m.list.itemSelected]
+    print "[settings] selected idx="; m.list.itemSelected; " kind="; row.kind
     if row.kind = "server" or row.kind = "add"
         edit = CreateObject("roSGNode", "ServerEditScreen")
         if row.kind = "server" then edit.serverId = row.id
@@ -68,7 +69,7 @@ sub onSelect()
         m.settings.refreshSecs = cycle[(cur + 1) mod cycle.Count()]
     else if row.kind = "columns"
         cols = m.settings.gridColumns + 1
-        if cols > 4 then cols = 2
+        if cols > 6 then cols = 1
         m.settings.gridColumns = cols
     else if row.kind = "portFirst"
         m.settings.livePortFirst = not m.settings.livePortFirst

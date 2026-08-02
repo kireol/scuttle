@@ -322,10 +322,16 @@ end sub
 sub buildGrid()
     st = AppSettings_Load()
     cols = st.gridColumns
-    if cols < 2 then cols = 2
-    if cols > 4 then cols = 4
+    if cols < 1 then cols = 1
+    if cols > 6 then cols = 6
     tileW = Int((1800 - 30 * (cols - 1)) / cols)
     tileH = Int(tileW * 362 / 580)
+    ' 1-2 columns: a full-width tile would be taller than the grid area
+    if tileH > 850
+        tileH = 850
+        tileW = Int(tileH * 580 / 362)
+    end if
+    print "[home] buildGrid cols="; cols; " tileW="; tileW; " tileH="; tileH
     m.grid.numColumns = cols
     rows = Int(880 / (tileH + 30))
     if rows < 1 then rows = 1
