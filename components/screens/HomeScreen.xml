@@ -14,6 +14,11 @@
         <MarkupGrid id="grid" translation="[60, 170]" itemComponentName="CameraTile"
                     itemSize="[580, 362]" itemSpacing="[30, 30]" numColumns="3" numRows="2"
                     vertFocusAnimationStyle="floatingFocus" drawFocusFeedback="false" />
+        <!-- scroll indicator, shown only when the grid has more rows than fit -->
+        <Rectangle id="scrollTrack" translation="[1872, 170]" width="6" height="880"
+                   color="0x2A343CFF" visible="false" />
+        <Rectangle id="scrollThumb" translation="[1872, 170]" width="6" height="100"
+                   color="0x2BB3C0FF" visible="false" />
         <Label id="status" translation="[60, 1010]" color="0x8A959CFF" text="" width="1800" />
         <!-- bottom-right: the Roku OS screensaver draws its own clock top-right
              when nothing is playing, and two stacked times looks broken -->
