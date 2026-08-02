@@ -297,8 +297,7 @@ sub onLiveSnap(ev as object)
         return
     end if
     m.snapFails = 0
-    ' keep the "Trying video: ..." status line while a background attempt runs
-    if not m.quietRetry then m.loadingLabel.visible = false
+    m.loadingLabel.visible = false
     hidePlaceholder()
     if m.snapFront.uri = ""
         m.snapFront.uri = res.path
@@ -410,7 +409,9 @@ sub playCurrent()
     tname = ""
     if m.tierIdx < m.tierNames.Count() then tname = m.tierNames[m.tierIdx]
     logAttempt(tname + " via " + routeName(currentUrl()))
-    showLoading()
+    ' background attempts are silent on screen — the Up overlay's trail is
+    ' where the cascade shows its work
+    if m.infoPanel.visible then updateInfoPanel()
 end sub
 
 ' Fetch the master playlist ourselves and hand the Video node the MEDIA
@@ -434,17 +435,6 @@ sub onMasterRetry()
     fetchMaster()
 end sub
 
-' Status line while a video source is being tried behind the snapshots
-sub showLoading()
-    name = ""
-    if m.tierIdx < m.tierNames.Count() then name = m.tierNames[m.tierIdx]
-    route = "direct"
-    if isMtxUrl(currentUrl()) then route = "mediamtx"
-    if Instr(1, currentUrl(), "/api/go2rtc/") > 0 then route = "proxy"
-    m.loadingLabel.text = "Trying video: " + name + " (" + route + ") ..."
-    m.loadingLabel.visible = true
-    if m.infoPanel.visible then updateInfoPanel()
-end sub
 
 sub onMaster(ev as object)
     out = ev.GetData()
