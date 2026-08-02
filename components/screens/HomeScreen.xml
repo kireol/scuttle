@@ -29,7 +29,7 @@
         <!-- bottom-right: the Roku OS screensaver draws its own clock top-right
              when nothing is playing, and two stacked times looks broken -->
         <Label id="clock" translation="[1560, 1004]" width="300" horizAlign="right"
-               color="0xE0E6EAFF" font="font:LargeBoldSystemFont" visible="false" />
+               color="0xFFFFFFFF" font="font:LargeBoldSystemFont" visible="false" />
         <!-- toast for fresh review alerts; OK while visible jumps to the camera -->
         <Group id="toast" visible="false" translation="[460, 870]">
             <Rectangle width="1000" height="6" color="0xFF6B6BFF" />
