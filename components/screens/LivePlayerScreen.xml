@@ -45,7 +45,7 @@
         <Label id="loadingLabel" translation="[60, 1000]" color="0xC8D2D8FF" visible="false" />
         <!-- one-time pointer to the * info overlay, shown on first playback -->
         <Label id="hintLabel" translation="[0, 1000]" width="1920" horizAlign="center"
-               color="0xE0E6EAFF" text="Press * for stream info" visible="false" />
+               color="0xE0E6EAFF" text="Press up for stream info" visible="false" />
         <Group id="errorPanel" visible="false">
             <Rectangle width="1920" height="1080" color="0x101418E0" />
             <Label id="errorTitle" text="Playback failed" translation="[660, 420]"
