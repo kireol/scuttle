@@ -71,6 +71,8 @@
         <Timer id="clockTimer" duration="10" repeat="true" />
         <!-- quiet background video retry while downgraded to snapshots -->
         <Timer id="retryTimer" duration="180" repeat="true" />
+        <!-- 1s cadence for master-playlist polling while MediaMTX warms up -->
+        <Timer id="masterRetryTimer" duration="1" repeat="false" />
         <!-- camera cycle dwell; duration set from settings at start -->
         <Timer id="cycleTimer" duration="10" repeat="true" />
     </children>

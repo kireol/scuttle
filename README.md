@@ -197,6 +197,19 @@ hlsSegmentCount: 7
 hlsSegmentDuration: 1s
 ```
 
-MediaMTX then serves `http://<host>:8888/front_yard/index.m3u8`, which
-Roku's player handles. Wiring an alternative HLS base URL per server into
-the app is a small change once such a packager exists.
+MediaMTX then serves `http://<host>:8888/<stream>/index.m3u8`, which
+Roku's player handles. **The app auto-detects MediaMTX**: on every connect it
+probes the server's MediaMTX port (default 8888, editable per server) and,
+when present, prefers it as the first route for every stream tier — and
+clears any stored snapshot downgrade so video is retried immediately. A
+wildcard path config means no per-camera setup:
+
+```yaml
+paths:
+  "~^(.+)$":
+    source: rtsp://127.0.0.1:8554/$G1
+    sourceOnDemand: yes
+```
+
+Confirmed working end-to-end (Aug 2026): Roku plays HEVC camera mains via
+MediaMTX's ~15s playlist window, where go2rtc's own HLS always failed.
