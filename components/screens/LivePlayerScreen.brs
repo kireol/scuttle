@@ -782,6 +782,11 @@ sub onVideoState()
         stopWarmTask()
         startFpsPolling()
         m.modeIcon.text = "▶"
+        ' the winning attempt gets an explicit verdict in the trail
+        n = m.attemptLog.Count()
+        if n > 0 and Left(m.attemptLog[n - 1], 2) = "> "
+            m.attemptLog[n - 1] = "OK " + Mid(m.attemptLog[n - 1], 3)
+        end if
         m.lastPos = -1
         m.stallCount = 0
         m.stallTimer.control = "start"
@@ -941,6 +946,11 @@ sub updateInfoPanel()
     end if
     if m.snapMode
         txt = txt + nl + "Mode: snapshot (refreshing stills)"
+        if m.quietRetry
+            txt = txt + nl + "Video: being tried in the background"
+        else
+            txt = txt + nl + "Video: not available — retries periodically"
+        end if
     else
         name = ""
         if m.tierIdx < m.tierNames.Count() then name = m.tierNames[m.tierIdx]
@@ -969,9 +979,9 @@ sub updateInfoPanel()
     ov = CamStream_Get(m.top.server.id, cam)
     if ov = "" then ov = "auto"
     txt = txt + nl + "Stream override: " + ov + "  (OK cycles)"
-    ' the fallback trail: x = failed, > = active; last 4 attempts shown
+    ' the fallback trail; last 4 attempts shown
     if m.attemptLog <> invalid and m.attemptLog.Count() > 0
-        txt = txt + nl + "Tried:"
+        txt = txt + nl + "Tried  (x failed, > trying, OK playing):"
         first = m.attemptLog.Count() - 4
         if first < 0 then first = 0
         for i = first to m.attemptLog.Count() - 1
