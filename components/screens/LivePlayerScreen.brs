@@ -35,6 +35,9 @@ sub init()
     m.clockTimer.ObserveFieldScoped("fire", "onClockTick")
     m.retryTimer = m.top.FindNode("retryTimer")
     m.retryTimer.ObserveFieldScoped("fire", "onRetryTick")
+    m.masterRetryTimer = m.top.FindNode("masterRetryTimer")
+    m.masterRetryTimer.ObserveFieldScoped("fire", "onMasterRetry")
+    m.masterTries = 0
     m.cycleTimer = m.top.FindNode("cycleTimer")
     m.cycleTimer.ObserveFieldScoped("fire", "onCycleTick")
     ' true while the tiny bundled clip plays under the snapshot posters to
@@ -340,17 +343,15 @@ sub playCurrent()
     stopWarmTask()
     stopFpsPolling()
     m.video.control = "stop"
-    ' Fetch the master playlist ourselves and hand the Video node the MEDIA
-    ' playlist directly: newer Roku OS (seen on 15.3) refuses go2rtc's master
-    ' when it declares an hvc1 codec — it never even opens a connection, just
-    ' buffers forever. The media playlist carries no codec declaration, so the
-    ' decoder sniffs the init segment instead and HEVC plays fine.
-    if m.masterTask <> invalid then m.masterTask.UnobserveFieldScoped("output")
-    t = CreateObject("roSGNode", "ApiTask")
-    t.input = { server: m.top.server, path: currentUrl(), method: "GET", body: "", savePath: "", context: currentUrl() }
-    t.ObserveFieldScoped("output", "onMaster")
-    t.control = "RUN"
-    m.masterTask = t
+    m.masterTries = 0
+    fetchMaster()
+    ' MediaMTX starts its go2rtc pull on demand — a cold ffmpeg chain needs
+    ' ~10s before the playlist exists, so give that route a longer leash
+    if isMtxUrl(currentUrl())
+        m.watchdog.duration = 15
+    else
+        m.watchdog.duration = 10
+    end if
     m.watchdog.control = "stop"
     m.watchdog.control = "start"
     if not m.quietRetry
@@ -359,11 +360,33 @@ sub playCurrent()
     end if
 end sub
 
+' Fetch the master playlist ourselves and hand the Video node the MEDIA
+' playlist directly: newer Roku OS (seen on 15.3) refuses go2rtc's master
+' when it declares an hvc1 codec — it never even opens a connection, just
+' buffers forever. The media playlist carries no codec declaration, so the
+' decoder sniffs the init segment instead and HEVC plays fine.
+sub fetchMaster()
+    if m.masterTask <> invalid then m.masterTask.UnobserveFieldScoped("output")
+    t = CreateObject("roSGNode", "ApiTask")
+    t.input = { server: m.top.server, path: currentUrl(), method: "GET", body: "", savePath: "", context: currentUrl() }
+    t.ObserveFieldScoped("output", "onMaster")
+    t.control = "RUN"
+    m.masterTask = t
+end sub
+
+' MediaMTX 404s while its on-demand source spins up; re-poll the master on a
+' 1s cadence and let the watchdog cap the total wait
+sub onMasterRetry()
+    if m.masterTries = 0 then return   ' attempt changed since scheduling
+    fetchMaster()
+end sub
+
 ' "Loading back_garage_sub (proxy) ..." while a source is being tried
 sub showLoading()
     name = ""
     if m.tierIdx < m.tierNames.Count() then name = m.tierNames[m.tierIdx]
     route = "direct"
+    if isMtxUrl(currentUrl()) then route = "mediamtx"
     if Instr(1, currentUrl(), "/api/go2rtc/") > 0 then route = "proxy"
     m.loadingLabel.text = "Loading " + name + " (" + route + ") ..."
     m.loadingLabel.visible = true
@@ -380,10 +403,17 @@ sub onMaster(ev as object)
         if entries.Count() > 0 then mediaUrl = entries[entries.Count() - 1]
     end if
     if mediaUrl = ""
+        if isMtxUrl(out.context) and m.masterTries < 12
+            ' on-demand source still warming — keep polling under the watchdog
+            m.masterTries = m.masterTries + 1
+            m.masterRetryTimer.control = "start"
+            return
+        end if
         print "[live] master fetch failed/empty for "; out.context
         advanceAttempt()
         return
     end if
+    m.masterTries = 0
     ' resolve relative to the master URL's directory
     if Left(mediaUrl, 4) <> "http" then mediaUrl = Frigate_HlsBaseUrl(out.context) + mediaUrl
     print "[live] media playlist: "; mediaUrl
@@ -518,25 +548,33 @@ sub buildTiers(cam as string)
     host = Frigate_HostFromUrl(m.top.server.baseUrl)
     rawBase = "http://" + host + ":" + StrI(m.top.server.go2rtcPort).Trim() + "/api/stream.m3u8?src="
     proxyBase = m.top.server.baseUrl + "/api/go2rtc/api/stream.m3u8?src="
+    ' MediaMTX (when detected) is the preferred route: it serves the same
+    ' streams with a real multi-second HLS window, which go2rtc's ~1s window
+    ' never provides — that window is why go2rtc HLS always dies on Roku
+    useMtx = m.top.server.mediamtxOk = true
+    mtxPort = m.top.server.mediamtxPort
+    if mtxPort = invalid or mtxPort = 0 then mtxPort = 8888
+    mtxBase = "http://" + host + ":" + StrI(mtxPort).Trim() + "/"
     ' Cloudflare-fronted servers: the raw port is blackholed (connections
     ' hang, costing a full watchdog cycle each), so don't even try it
     useRaw = m.top.portFirst and m.top.server.cfProxied <> true
-    print "[live] buildTiers "; cam; " portFirst="; m.top.portFirst; " cfProxied="; m.top.server.cfProxied; " names="; FormatJson(names)
+    print "[live] buildTiers "; cam; " mtx="; useMtx; " cfProxied="; m.top.server.cfProxied; " names="; FormatJson(names)
     tiers = []
     for each n in names
-        ' fMP4 segments (&mp4) are needed for HEVC mains, but the h264 _roku
-        ' restream can use classic MPEG-TS segments — a different go2rtc muxer
-        ' path that Roku's HLS player tolerates far better
-        seg = "&mp4"
-        if Right(n, 5) = "_roku" then seg = ""
         urls = []
-        if useRaw then urls.Push(rawBase + n + seg)
-        urls.Push(proxyBase + n + seg)
+        if useMtx then urls.Push(mtxBase + n + "/index.m3u8")
+        if useRaw then urls.Push(rawBase + n + "&mp4")
+        urls.Push(proxyBase + n + "&mp4")
         tiers.Push(urls)
     end for
     m.tiers = tiers
     m.tierNames = names
 end sub
+
+' True when an attempt URL goes through MediaMTX rather than go2rtc
+function isMtxUrl(url as string) as boolean
+    return Instr(1, url, "/index.m3u8") > 0
+end function
 
 ' ["Authorization: Bearer x"] / ["Authorization: Basic y"] / []
 function authHeaderStrings() as object
@@ -750,6 +788,7 @@ sub updateInfoPanel()
         if m.tierIdx < m.tierNames.Count() then name = m.tierNames[m.tierIdx]
         txt = txt + nl + "Stream: " + name
         route = "go2rtc port (direct)"
+        if isMtxUrl(currentUrl()) then route = "MediaMTX"
         if Instr(1, currentUrl(), "/api/go2rtc/") > 0 then route = "Frigate proxy"
         txt = txt + nl + "Route: " + route
         txt = txt + nl + "State: " + m.video.state

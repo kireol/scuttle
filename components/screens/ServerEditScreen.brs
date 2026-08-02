@@ -30,6 +30,7 @@ function rows() as object
         { key: "name", title: "Name: " + m.server.name },
         { key: "baseUrl", title: "URL: " + m.server.baseUrl },
         { key: "go2rtcPort", title: "go2rtc port: " + StrI(m.server.go2rtcPort).Trim() },
+        { key: "mediamtxPort", title: "MediaMTX HLS port: " + StrI(m.server.mediamtxPort).Trim() + "  (auto-detected on connect)" },
         { key: "authType", title: "Auth type: " + authLabel + "  (OK cycles)" },
         { key: "username", title: "Username: " + m.server.username },
         { key: "password", title: "Password: " + String(Len(m.server.password), "*") },
@@ -117,6 +118,7 @@ sub openKeyboard(fieldKey as string)
     d.title = "Enter " + fieldKey
     current = m.server[fieldKey]
     if fieldKey = "go2rtcPort" then current = StrI(m.server.go2rtcPort).Trim()
+    if fieldKey = "mediamtxPort" then current = StrI(m.server.mediamtxPort).Trim()
     d.text = current
     d.buttons = ["OK", "Cancel"]
     d.ObserveFieldScoped("buttonSelected", "onKeyboardButton")
@@ -132,6 +134,9 @@ sub onKeyboardButton()
         if m.editingKey = "go2rtcPort"
             m.server.go2rtcPort = Val(value)
             if m.server.go2rtcPort = 0 then m.server.go2rtcPort = 1984
+        else if m.editingKey = "mediamtxPort"
+            m.server.mediamtxPort = Val(value)
+            if m.server.mediamtxPort = 0 then m.server.mediamtxPort = 8888
         else
             m.server[m.editingKey] = value
         end if

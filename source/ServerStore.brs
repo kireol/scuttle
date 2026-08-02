@@ -13,6 +13,8 @@ function ServerStore_Load() as object
                 if not s.DoesExist("liveMode") then s.liveMode = "video"
                 if not s.DoesExist("streamType") then s.streamType = "auto"
                 if not s.DoesExist("verifyTls") then s.verifyTls = false
+                if not s.DoesExist("mediamtxPort") then s.mediamtxPort = 8888
+                if not s.DoesExist("mediamtxOk") then s.mediamtxOk = false
             end for
             return data
         end if
@@ -89,5 +91,7 @@ function ServerStore_NewServer() as object
         liveMode: "video"
         streamType: "auto"
         verifyTls: false
+        mediamtxPort: 8888
+        mediamtxOk: false
     }
 end function

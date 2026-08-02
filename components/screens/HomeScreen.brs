@@ -386,6 +386,40 @@ sub onConfig(ev as object)
     startSnapshots()
     m.actTimer.control = "start"
     fetchActivity()
+    probeMediamtx()
+end sub
+
+' --- MediaMTX detection: if a spec-compliant HLS packager answers on the
+' --- server's MediaMTX port, the live player prefers it (go2rtc's own HLS
+' --- window is too small for Roku). Re-checked on every connect.
+sub probeMediamtx()
+    if m.mtxTask <> invalid then return
+    port = m.server.mediamtxPort
+    if port = invalid or port = 0 then port = 8888
+    url = "http://" + Frigate_HostFromUrl(m.server.baseUrl) + ":" + StrI(port).Trim() + "/"
+    t = CreateObject("roSGNode", "ApiTask")
+    t.input = { server: m.server, path: url, method: "GET", body: "", savePath: "", context: "mtx" + m.server.id }
+    t.ObserveFieldScoped("output", "onMtxProbe")
+    t.control = "RUN"
+    m.mtxTask = t
+end sub
+
+sub onMtxProbe(ev as object)
+    out = ev.GetData()
+    m.mtxTask = invalid
+    if out.context <> "mtx" + m.server.id then return   ' stale (server switched)
+    present = out.status <> 0   ' any HTTP answer (even 404) means it's there
+    if m.server.mediamtxOk = present then return
+    print "[home] mediamtx detected="; present; " for "; m.server.name
+    m.server.mediamtxOk = present
+    srv = ServerStore_GetById(m.server.id)
+    if srv <> invalid
+        srv.mediamtxOk = present
+        ServerStore_Upsert(srv)
+    end if
+    ' a newly appeared packager means video may work now — forget the old
+    ' downgrade so the next camera open tries video immediately
+    if present then TierStore_Set(m.server.id, 0, false)
 end sub
 
 ' --- activity badges: cameras with review items (motion/objects) in the
