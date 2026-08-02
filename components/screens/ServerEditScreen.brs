@@ -43,6 +43,8 @@ function rows() as object
     if m.server.cycleCams <> invalid and m.server.cycleCams.Count() > 0
         cycleLabel = StrI(m.server.cycleCams.Count()).Trim() + " selected"
     end if
+    unitLabel = "f"
+    if m.server.tempUnit = "c" then unitLabel = "c"
     return [
         { key: "name", title: "Name: " + m.server.name },
         { key: "baseUrl", title: "URL: " + m.server.baseUrl },
@@ -56,6 +58,7 @@ function rows() as object
         { key: "verifyTls", title: "Verify TLS certificate: " + verifyLabel + "  (OK toggles)" },
         { key: "cycleCams", title: "Cycle cameras: " + cycleLabel + "  (OK picks)" },
         { key: "zipcode", title: "Weather ZIP code: " + m.server.zipcode },
+        { key: "tempUnit", title: "Temperature unit: °" + UCase(unitLabel) + "  (OK toggles)" },
         { key: "test", title: "▶ Test Connection" },
         { key: "save", title: "✔ Save" },
         { key: "delete", title: "✖ Delete Server" }
@@ -121,6 +124,13 @@ sub onSelect()
         fetchStreamTypes()
     else if row.key = "verifyTls"
         m.server.verifyTls = not (m.server.verifyTls = true)
+        rebuild()
+    else if row.key = "tempUnit"
+        if m.server.tempUnit = "c"
+            m.server.tempUnit = "f"
+        else
+            m.server.tempUnit = "c"
+        end if
         rebuild()
     else if row.key = "test"
         testConnection()

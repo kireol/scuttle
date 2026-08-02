@@ -17,6 +17,7 @@ function ServerStore_Load() as object
                 if not s.DoesExist("mediamtxOk") then s.mediamtxOk = false
                 if not s.DoesExist("cycleCams") then s.cycleCams = []
                 if not s.DoesExist("zipcode") then s.zipcode = ""
+                if not s.DoesExist("tempUnit") then s.tempUnit = "f"
                 if not s.DoesExist("zipLat") then s.zipLat = ""
                 if not s.DoesExist("zipLon") then s.zipLon = ""
             end for
@@ -99,6 +100,7 @@ function ServerStore_NewServer() as object
         mediamtxOk: false
         cycleCams: []
         zipcode: ""
+        tempUnit: "f"
         zipLat: ""
         zipLon: ""
     }

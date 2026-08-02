@@ -267,10 +267,10 @@ function Frigate_FriendlyVideoError(code as integer, msg as string) as string
     return "Playback failed"
 end function
 
-' "72° 0.12in" for the clock box (precip omitted when zero)
-function Weather_Format(tempF as dynamic, precipIn as dynamic) as string
-    if tempF = invalid then return ""
-    s = StrI(Int(tempF + 0.5)).Trim() + "°"
+' "72°F 0.12in" for the clock box (precip omitted when zero)
+function Weather_Format(temp as dynamic, precipIn as dynamic, unit = "f" as string) as string
+    if temp = invalid then return ""
+    s = StrI(Int(temp + 0.5)).Trim() + "°" + UCase(unit)
     if precipIn <> invalid and precipIn > 0
         hundredths = Int(precipIn * 100 + 0.5)
         s = s + " " + Str(hundredths / 100.0).Trim() + "in"

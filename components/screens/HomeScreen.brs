@@ -71,6 +71,7 @@ sub fetchWeather()
     if m.weatherTask <> invalid then return
     t = CreateObject("roSGNode", "WeatherTask")
     t.zipcode = m.server.zipcode
+    if m.server.tempUnit <> invalid then t.unit = m.server.tempUnit
     if m.server.zipLat <> invalid then t.lat = m.server.zipLat
     if m.server.zipLon <> invalid then t.lon = m.server.zipLon
     t.ObserveFieldScoped("output", "onWeather")
@@ -83,7 +84,9 @@ sub onWeather(ev as object)
     out = ev.GetData()
     m.weatherTask = invalid
     if out.ok <> true then return
-    m.weatherText = Weather_Format(out.tempF, out.precipIn)
+    unit = "f"
+    if m.server.tempUnit <> invalid and m.server.tempUnit = "c" then unit = "c"
+    m.weatherText = Weather_Format(out.tempF, out.precipIn, unit)
     onClockTick()
     ' cache the geocode so the next fetch skips zippopotam
     if m.server.zipLat = "" and out.lat <> invalid and out.lat <> ""
