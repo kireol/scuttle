@@ -166,10 +166,12 @@ sub onClockTick()
     layoutClockBox()
 end sub
 
-' Size the snug clock backdrop to its content (weather makes it wider)
+' Size the snug clock backdrop to its content (weather makes it wider).
+' The extra 150px leaves room for the LIVE/● mode tag plus a real gap
+' before the right-aligned text — 90px let "LIVE" overlap the time.
 sub layoutClockBox()
-    w = Len(m.clockLabel.text) * 17 + 90
-    if w < 200 then w = 200
+    w = Len(m.clockLabel.text) * 17 + 150
+    if w < 240 then w = 240
     x = 1880 - w
     m.clockBg.width = w
     m.clockBg.translation = [x, 990]

@@ -22,10 +22,14 @@ sub execute()
         return
     end if
     tempUnit = "fahrenheit"
-    if m.top.unit = "c" then tempUnit = "celsius"
+    precipUnit = "inch"
+    if m.top.unit = "c"
+        tempUnit = "celsius"
+        precipUnit = "mm"
+    end if
     url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon
     url = url + "&current=temperature_2m&daily=precipitation_sum&forecast_days=1"
-    url = url + "&temperature_unit=" + tempUnit + "&precipitation_unit=inch&timezone=auto"
+    url = url + "&temperature_unit=" + tempUnit + "&precipitation_unit=" + precipUnit + "&timezone=auto"
     res = doRequest(url, {}, "GET", "", "")
     if res.status <> 200
         m.top.output = { ok: false }
