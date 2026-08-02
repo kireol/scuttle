@@ -878,7 +878,7 @@ sub updateInfoPanel()
     end if
     if m.lastFps <> "" then txt = txt + nl + "Camera FPS: " + m.lastFps
     if m.tiers.Count() > 0
-        txt = txt + nl + "Quality tier: " + StrI(m.serverTier + 1).Trim() + " of " + StrI(m.tiers.Count()).Trim()
+        txt = txt + nl + "Quality: " + tierLabel(m.tierIdx, m.tiers.Count())
     end if
     ov = CamStream_Get(m.top.server.id, cam)
     if ov = "" then ov = "auto"
@@ -889,6 +889,14 @@ sub updateInfoPanel()
     end if
     m.infoText.text = txt
 end sub
+
+' Friendly name for a spot in the downgrade chain: the first choice is
+' "Best", the last fallback before snapshots is "Good"
+function tierLabel(idx as integer, count as integer) as string
+    if idx <= 0 or count <= 1 then return "Best"
+    if idx = 1 and count >= 3 then return "Better"
+    return "Good"
+end function
 
 function fmtBitrate(bps as integer) as string
     if bps >= 1000000
