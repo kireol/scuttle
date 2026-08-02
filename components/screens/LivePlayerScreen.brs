@@ -187,6 +187,7 @@ sub fetchWeather()
     if m.weatherTask <> invalid then return
     t = CreateObject("roSGNode", "WeatherTask")
     t.zipcode = srv.zipcode
+    if srv.tempUnit <> invalid then t.unit = srv.tempUnit
     if srv.zipLat <> invalid then t.lat = srv.zipLat
     if srv.zipLon <> invalid then t.lon = srv.zipLon
     t.ObserveFieldScoped("output", "onWeather")
@@ -199,7 +200,10 @@ sub onWeather(ev as object)
     out = ev.GetData()
     m.weatherTask = invalid
     if out.ok <> true then return
-    m.weatherText = Weather_Format(out.tempF, out.precipIn)
+    unit = "f"
+    srv = m.top.server
+    if srv <> invalid and srv.tempUnit <> invalid and srv.tempUnit = "c" then unit = "c"
+    m.weatherText = Weather_Format(out.tempF, out.precipIn, unit)
     onClockTick()
 end sub
 

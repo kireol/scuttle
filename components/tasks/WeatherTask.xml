@@ -2,6 +2,7 @@
 <component name="WeatherTask" extends="Task">
     <interface>
         <field id="zipcode" type="string" value="" />
+        <field id="unit" type="string" value="f" />
         <field id="lat" type="string" value="" />
         <field id="lon" type="string" value="" />
         <field id="output" type="assocarray" />

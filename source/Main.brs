@@ -76,6 +76,9 @@ sub HandleAddServer(info as object)
         srv.zipLat = ""
         srv.zipLon = ""
     end if
+    if info.tempunit <> invalid and (info.tempunit = "f" or info.tempunit = "c")
+        srv.tempUnit = info.tempunit
+    end if
     print "[main] addserver via ECP input: "; srv.name; " "; srv.baseUrl
     ServerStore_Upsert(srv)
 end sub
