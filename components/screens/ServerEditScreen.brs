@@ -1,16 +1,24 @@
 sub init()
     m.list = m.top.FindNode("list")
     m.status = m.top.FindNode("status")
+    m.buttons = m.top.FindNode("buttons")
+    m.scrollTrack = m.top.FindNode("scrollTrack")
+    m.scrollThumb = m.top.FindNode("scrollThumb")
     m.list.ObserveFieldScoped("itemSelected", "onSelect")
+    m.list.ObserveFieldScoped("itemFocused", "updateScrollThumb")
+    m.buttons.ObserveFieldScoped("itemSelected", "onButtonSelect")
     m.top.ObserveField("serverId", "loadServer")
     m.top.ObserveField("wasShown", "onShown")
     m.server = ServerStore_NewServer()
     m.pendingTask = invalid
     m.dialog = invalid
+    ' unsaved edits: leaving the screen while dirty prompts save/discard/stay
+    m.dirty = false
     ' "fields" = normal settings rows; "cams" = the cycle-camera picker
     m.mode = "fields"
     m.allCams = []
     m.camSel = {}
+    buildButtons()
     rebuild()
 end sub
 
@@ -23,6 +31,7 @@ sub loadServer()
         existing = ServerStore_GetById(m.top.serverId)
         if existing <> invalid then m.server = existing
     end if
+    m.dirty = false
     rebuild()
 end sub
 
@@ -58,12 +67,18 @@ function rows() as object
         { key: "verifyTls", title: "Verify TLS certificate: " + verifyLabel + "  (OK toggles)" },
         { key: "cycleCams", title: "Cycle cameras: " + cycleLabel + "  (OK picks)" },
         { key: "zipcode", title: "Weather ZIP code: " + m.server.zipcode },
-        { key: "tempUnit", title: "Weather units: " + unitLabel + "  (OK toggles)" },
-        { key: "test", title: "▶ Test Connection" },
-        { key: "save", title: "✔ Save" },
-        { key: "delete", title: "✖ Delete Server" }
+        { key: "tempUnit", title: "Weather units: " + unitLabel + "  (OK toggles)" }
     ]
 end function
+
+sub buildButtons()
+    content = CreateObject("roSGNode", "ContentNode")
+    for each title in ["▶ Test Connection", "✔ Save", "✖ Delete Server"]
+        item = content.CreateChild("ContentNode")
+        item.title = title
+    end for
+    m.buttons.content = content
+end sub
 
 sub rebuild()
     ' Replacing list content resets focus to row 0; restore it so
@@ -76,6 +91,44 @@ sub rebuild()
     end for
     m.list.content = content
     if idx > 0 then m.list.jumpToItem = idx
+    updateScrollThumb()
+end sub
+
+' Thumb position/size mirror where the focused row sits in the full list,
+' so it is obvious the list scrolls and how far down you are
+sub updateScrollThumb()
+    total = 0
+    if m.list.content <> invalid then total = m.list.content.GetChildCount()
+    visible = 12
+    if total <= visible
+        m.scrollTrack.visible = false
+        m.scrollThumb.visible = false
+        return
+    end if
+    trackH = 720
+    thumbH = Int(trackH * visible / total)
+    if thumbH < 40 then thumbH = 40
+    idx = m.list.itemFocused
+    if idx < 0 then idx = 0
+    span = total - 1
+    if span < 1 then span = 1
+    y = 160 + Int((trackH - thumbH) * idx / span)
+    m.scrollThumb.height = thumbH
+    m.scrollThumb.translation = [1136, y]
+    m.scrollTrack.visible = true
+    m.scrollThumb.visible = true
+end sub
+
+sub markDirty()
+    m.dirty = true
+    m.status.text = "Unsaved changes — ► then ✔ Save to keep them"
+end sub
+
+sub doSave()
+    m.server.baseUrl = Frigate_NormalizeBaseUrl_Render(m.server.baseUrl)
+    ServerStore_Upsert(m.server, "save")
+    m.dirty = false
+    m.status.text = "Saved"
 end sub
 
 sub onSelect()
@@ -95,9 +148,10 @@ sub onSelect()
             if m.camSel.DoesExist(cam) then sel.Push(cam)
         end for
         if sel.Count() = m.allCams.Count() then sel = []   ' everything = all
+        changed = FormatJson(sel) <> FormatJson(m.server.cycleCams)
         m.server.cycleCams = sel
-        ServerStore_Upsert(m.server)
         m.mode = "fields"
+        if changed then markDirty()
         rebuild()
         return
     else if row.key = "cycleCams"
@@ -112,7 +166,7 @@ sub onSelect()
                 exit for
             end if
         end for
-        autoPersist()
+        markDirty()
         rebuild()
     else if row.key = "liveMode"
         if m.server.liveMode = "video"
@@ -120,13 +174,13 @@ sub onSelect()
         else
             m.server.liveMode = "video"
         end if
-        autoPersist()
+        markDirty()
         rebuild()
     else if row.key = "streamType"
         fetchStreamTypes()
     else if row.key = "verifyTls"
         m.server.verifyTls = not (m.server.verifyTls = true)
-        autoPersist()
+        markDirty()
         rebuild()
     else if row.key = "tempUnit"
         if m.server.tempUnit = "c"
@@ -134,15 +188,21 @@ sub onSelect()
         else
             m.server.tempUnit = "c"
         end if
-        autoPersist()
+        markDirty()
         rebuild()
-    else if row.key = "test"
+    else
+        openKeyboard(row.key)
+    end if
+end sub
+
+sub onButtonSelect()
+    idx = m.buttons.itemSelected
+    if idx = 0
         testConnection()
-    else if row.key = "save"
-        m.server.baseUrl = Frigate_NormalizeBaseUrl_Render(m.server.baseUrl)
-        ServerStore_Upsert(m.server)
+    else if idx = 1
+        doSave()
         showSavedDialog()
-    else if row.key = "delete"
+    else if idx = 2
         ServerStore_Delete(m.server.id)
         ' drop everything else stored for this server too
         PrefStore_PruneServer(m.server.id)
@@ -151,17 +211,9 @@ sub onSelect()
             st.lastServerId = ""
             AppSettings_Save(st)
         end if
+        m.dirty = false
         m.top.closeMe = true
-    else
-        openKeyboard(row.key)
     end if
-end sub
-
-' Toggles and keyboard edits apply immediately for servers that already
-' exist — waiting for Save silently discarded changes on Back. New,
-' never-saved servers still require Save (no half-configured records).
-sub autoPersist()
-    if ServerStore_GetById(m.server.id) <> invalid then ServerStore_Upsert(m.server)
 end sub
 
 ' Render-thread-safe normalize (no roUrlTransfer): duplicate of trim logic
@@ -208,7 +260,7 @@ sub onKeyboardButton()
         else
             m.server[m.editingKey] = value
         end if
-        autoPersist()
+        markDirty()
         rebuild()
     end if
     d.close = true
@@ -263,11 +315,13 @@ end sub
 sub onStreamTypeDialog()
     d = m.dialog
     if d.buttonSelected >= 0 and d.buttonSelected < m.typeOptions.Count()
-        m.server.streamType = m.typeOptions[d.buttonSelected]
+        if m.server.streamType <> m.typeOptions[d.buttonSelected]
+            m.server.streamType = m.typeOptions[d.buttonSelected]
+            markDirty()
+        end if
     end if
     d.close = true
     m.dialog = invalid
-    autoPersist()
     rebuild()
 end sub
 
@@ -333,6 +387,31 @@ sub onSavedDialog()
     end if
 end sub
 
+sub showDirtyDialog()
+    d = CreateObject("roSGNode", "Dialog")
+    d.title = "Unsaved changes"
+    d.message = "You changed settings but did not save them."
+    d.buttons = ["Save and leave", "Discard changes", "Stay here"]
+    d.ObserveFieldScoped("buttonSelected", "onDirtyDialog")
+    m.dialog = d
+    m.top.GetScene().dialog = d
+end sub
+
+sub onDirtyDialog()
+    d = m.dialog
+    choice = d.buttonSelected
+    d.close = true
+    m.dialog = invalid
+    if choice = 0
+        doSave()
+        m.top.closeMe = true
+    else if choice = 1
+        m.dirty = false
+        m.top.closeMe = true
+    end if
+    ' choice 2 = stay: nothing to do, dialog is closed
+end sub
+
 sub testConnection()
     m.status.text = "Testing " + m.server.baseUrl + " ..."
     m.server.baseUrl = Frigate_NormalizeBaseUrl_Render(m.server.baseUrl)
@@ -389,6 +468,22 @@ function onKeyEvent(key as string, press as boolean) as boolean
         ' leave the picker without committing (Done commits)
         m.mode = "fields"
         rebuild()
+        return true
+    end if
+    if key = "right" and m.mode = "fields" and m.list.HasFocus()
+        m.buttons.SetFocus(true)
+        return true
+    end if
+    if key = "left" and m.buttons.HasFocus()
+        m.list.SetFocus(true)
+        return true
+    end if
+    if key = "back" and m.dirty
+        showDirtyDialog()
+        return true
+    end if
+    if key = "back" and m.buttons.HasFocus()
+        m.list.SetFocus(true)
         return true
     end if
     return false
