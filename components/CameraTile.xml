@@ -18,6 +18,9 @@
         <!-- recent review activity (motion/object) on this camera -->
         <Label id="actBadge" text="● activity" translation="[12, 10]" color="0xFF6B6BFF"
                font="font:SmallBoldSystemFont" visible="false" />
+        <!-- snapshot age warning when refreshes stop arriving -->
+        <Label id="staleBadge" translation="[430, 10]" width="140" horizAlign="right"
+               color="0xE0B040FF" font="font:SmallBoldSystemFont" visible="false" />
         <Rectangle id="focusRing" width="580" height="362" color="0x00000000" visible="false">
             <Rectangle id="frTop" width="580" height="4" color="0x2BB3C0FF" />
             <Rectangle id="frBottom" width="580" height="4" translation="[0, 358]" color="0x2BB3C0FF" />
