@@ -4,6 +4,16 @@ cd "$(dirname "$0")"
 [[ -f .env ]] || { echo "Missing .env (copy .env.example)"; exit 1; }
 source .env
 
+# Never ship a build that doesn't validate: installing a zip that fails
+# Roku-side compilation DELETES the dev channel (and its registry — servers,
+# settings, everything). bsc catches those errors in about a second.
+if command -v npx >/dev/null 2>&1; then
+    if ! npx bsc --rootDir . --createPackage false >/dev/null 2>&1; then
+        echo "ABORT: BrightScript validation failed — run: npx bsc --rootDir . --createPackage false"
+        exit 1
+    fi
+fi
+
 mkdir -p out
 rm -f out/app.zip
 zip -rq out/app.zip manifest source components images

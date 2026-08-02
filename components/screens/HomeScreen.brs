@@ -617,12 +617,13 @@ sub onTileSelected()
     openPlayer(m.grid.itemSelected, false)
 end sub
 
-sub openPlayer(startIndex as integer, cycleMode as boolean)
+sub openPlayer(startIndex as integer, cycleMode as boolean, openInfo = false as boolean)
     player = CreateObject("roSGNode", "LivePlayerScreen")
     player.server = m.server
     player.cameras = m.cameras
     player.startIndex = startIndex
     player.cycleMode = cycleMode
+    player.openInfo = openInfo
     player.liveStreams = m.liveStreams
     player.liveStreamsSub = m.liveStreamsSub
     player.portFirst = AppSettings_Load().livePortFirst
@@ -675,6 +676,14 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
+    if key = "options"
+        ' consume * everywhere — unhandled it opens the Roku TV settings
+        ' sidebar; on a focused tile it means "show me this camera's info"
+        if m.focusZone = "grid" and m.cameras.Count() > 0 and m.grid.itemFocused >= 0
+            openPlayer(m.grid.itemFocused, false, true)
+        end if
+        return true
+    end if
     if m.focusZone = "grid"
         if key = "back" or (key = "up" and m.grid.itemFocused < m.grid.numColumns)
             m.focusZone = "menu"
