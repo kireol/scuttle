@@ -58,6 +58,8 @@ sub init()
     ' set when go2rtc's "zero length playlist" error is seen — the * overlay
     ' then points at the server-side fix
     m.sawZeroLen = false
+    ' fallback trail for the info overlay
+    m.attemptLog = []
     m.errorPanel = m.top.FindNode("errorPanel")
     m.errorDetail = m.top.FindNode("errorDetail")
     m.switcher = m.top.FindNode("switcher")
@@ -155,6 +157,7 @@ end sub
 sub startCam()
     leaveSnapshotMode()
     m.quietRetry = false
+    m.attemptLog = []
     cam = m.top.cameras[m.idx]
     showPlaceholder(cam)
     if m.top.server.liveMode = "snapshot" or m.serverSnapshot
@@ -199,6 +202,7 @@ sub enterSnapshotMode()
     m.errorPanel.visible = false
     m.snapMode = true
     m.snapFails = 0
+    logAttempt("snapshots")
     m.loadingLabel.text = "Loading snapshot mode ..."
     m.loadingLabel.visible = true
     startKeepalive()
@@ -398,6 +402,9 @@ sub playCurrent()
     m.watchdog.control = "stop"
     m.watchdog.control = "start"
     if not m.quietRetry
+        tname = ""
+        if m.tierIdx < m.tierNames.Count() then tname = m.tierNames[m.tierIdx]
+        logAttempt(tname + " via " + routeName(currentUrl()))
         showLoading()
         showName(cam)
     end if
@@ -644,6 +651,22 @@ function isMtxUrl(url as string) as boolean
     return Instr(1, url, "/index.m3u8") > 0
 end function
 
+' Short route name for the current attempt URL
+function routeName(url as string) as string
+    if isMtxUrl(url) then return "MediaMTX"
+    if Instr(1, url, "/api/go2rtc/") > 0 then return "proxy"
+    return "direct"
+end function
+
+' Fallback trail shown in the info overlay: mark the previous attempt
+' failed and note what is being tried now
+sub logAttempt(entry as string)
+    n = m.attemptLog.Count()
+    if n > 0 then m.attemptLog[n - 1] = "x " + Mid(m.attemptLog[n - 1], 3)
+    if n >= 8 then m.attemptLog.Shift()
+    m.attemptLog.Push("> " + entry)
+end sub
+
 ' ["Authorization: Bearer x"] / ["Authorization: Basic y"] / []
 function authHeaderStrings() as object
     s = m.top.server
@@ -883,6 +906,15 @@ sub updateInfoPanel()
     ov = CamStream_Get(m.top.server.id, cam)
     if ov = "" then ov = "auto"
     txt = txt + nl + "Stream override: " + ov + "  (OK cycles)"
+    ' the fallback trail: x = failed, > = active; last 4 attempts shown
+    if m.attemptLog <> invalid and m.attemptLog.Count() > 0
+        txt = txt + nl + "Tried:"
+        first = m.attemptLog.Count() - 4
+        if first < 0 then first = 0
+        for i = first to m.attemptLog.Count() - 1
+            txt = txt + nl + "  " + m.attemptLog[i]
+        end for
+    end if
     if m.sawZeroLen
         txt = txt + nl + "Tip: go2rtc's HLS window is too small for Roku —"
         txt = txt + nl + "see README, 'Live video reliability'"
