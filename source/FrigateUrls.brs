@@ -50,6 +50,107 @@ function Frigate_LiveHlsUrl(server as object, cameraName as string) as string
     return "http://" + host + ":" + StrI(server.go2rtcPort).Trim() + "/api/stream.m3u8?src=" + Frigate_UrlEncode(cameraName) + "&mp4"
 end function
 
+' Ordered go2rtc stream names for live view: full-res main first (its master
+' answers instantly), the sub as a decode fallback, and the optional
+' "<name>_roku" ffmpeg transcode last — it is capped at 1280 wide and a cold
+' start takes ~8s before the master playlist even responds.
+function Frigate_LiveStreamNames(mainName as string, subName as string) as object
+    rokuName = mainName + "_roku"
+    if Right(mainName, 5) = "_main" then rokuName = Left(mainName, Len(mainName) - 5) + "_roku"
+    names = [mainName]
+    if subName <> "" and subName <> mainName then names.Push(subName)
+    names.Push(rokuName)
+    return names
+end function
+
+' Distinct stream-type suffixes present in a list of go2rtc stream names,
+' e.g. ["front_main","front_sub","back_main"] -> ["_main","_sub"]. A suffix
+' counts as a type when it is a known convention (_main/_sub/_roku) or
+' appears on at least two names (so a lone camera called "front_door"
+' doesn't invent a "_door" type). Known types come first, in quality order.
+function Frigate_StreamTypes(streamNames as object) as object
+    counts = {}
+    for each n in streamNames
+        p = 0
+        for i = Len(n) to 1 step -1
+            if Mid(n, i, 1) = "_" then p = i : exit for
+        end for
+        if p > 1 and p < Len(n)
+            suffix = Mid(n, p)
+            if counts.DoesExist(suffix)
+                counts[suffix] = counts[suffix] + 1
+            else
+                counts[suffix] = 1
+            end if
+        end if
+    end for
+    types = []
+    for each k in ["_main", "_sub", "_roku"]
+        if counts.DoesExist(k) then types.Push(k)
+    end for
+    known = { "_main": true, "_sub": true, "_roku": true }
+    others = []
+    for each suffix in counts
+        if not known.DoesExist(suffix) and counts[suffix] >= 2 then others.Push(suffix)
+    end for
+    others.Sort()
+    for each o in others
+        types.Push(o)
+    end for
+    return types
+end function
+
+' Stream name for a camera at a chosen type: a known variant suffix on the
+' main stream name is replaced ("cam_main" + "_sub" -> "cam_sub"); a bare
+' name just gets the suffix appended ("cam" + "_sub" -> "cam_sub").
+function Frigate_StreamNameForType(mainName as string, streamType as string) as string
+    base = mainName
+    for each suffix in ["_main", "_sub", "_roku"]
+        if Len(base) > Len(suffix) and Right(base, Len(suffix)) = suffix
+            base = Left(base, Len(base) - Len(suffix))
+            exit for
+        end if
+    end for
+    return base + streamType
+end function
+
+' True when response headers show the server is behind Cloudflare, which
+' silently drops non-web ports — the raw go2rtc port can never work there.
+' headersArray is roUrlEvent.GetResponseHeadersArray() format: [{name: value}]
+function Frigate_IsCloudflare(headersArray as dynamic) as boolean
+    if headersArray = invalid then return false
+    for each entry in headersArray
+        for each k in entry
+            key = LCase(k)
+            if key = "cf-ray" then return true
+            if key = "server" and Instr(1, LCase(entry[k]), "cloudflare") > 0 then return true
+        end for
+    end for
+    return false
+end function
+
+' Non-comment entries of an m3u8 playlist (variant names or segment files)
+function Frigate_PlaylistEntries(body as string) as object
+    entries = []
+    for each ln in body.Split(chr(10))
+        l = ln.Trim()
+        if l <> "" and Left(l, 1) <> "#" then entries.Push(l)
+    end for
+    return entries
+end function
+
+' Directory of a playlist URL, for resolving relative entries: query and
+' filename stripped, trailing slash kept
+function Frigate_HlsBaseUrl(url as string) as string
+    u = url
+    p = Instr(1, u, "?")
+    if p > 0 then u = Left(u, p - 1)
+    for i = Len(u) to 1 step -1
+        if Mid(u, i, 1) = "/" then return Left(u, i)
+    end for
+    return u
+end function
+
 function Frigate_SnapshotPath(cameraName as string, height as integer) as string
     return "/api/" + cameraName + "/latest.jpg?height=" + StrI(height).Trim()
 end function
@@ -63,9 +164,13 @@ function Frigate_EventClipPath(eventId as string) as string
 end function
 
 function Frigate_VodRangeUrl(server as object, cameraName as string, startTs as double, endTs as double) as string
-    s = StrI(Int(startTs)).Trim()
-    e = StrI(Int(endTs + 0.999)).Trim()
-    return server.baseUrl + "/vod/" + cameraName + "/start/" + s + "/end/" + e + "/master.m3u8"
+    ' Int()/StrI()/Str() coerce through 32-bit float and mangle epoch timestamps;
+    ' LongInteger + ToStr() keeps full precision (floor start, ceil end)
+    s& = startTs
+    if s& > startTs then s& = s& - 1
+    e& = endTs
+    if e& < endTs then e& = e& + 1
+    return server.baseUrl + "/vod/" + cameraName + "/start/" + s&.ToStr() + "/end/" + e&.ToStr() + "/master.m3u8"
 end function
 
 function Frigate_VodHourUrl(server as object, yearMonth as string, day as string, hour as string, cameraName as string, tz as string) as string
@@ -77,6 +182,31 @@ end function
 function Frigate_UrlEncode(s as string) as string
     x = CreateObject("roUrlTransfer")
     return x.Escape(s)
+end function
+
+' Human-readable message for an HTTP-level failure (status 0 = no connection)
+function Frigate_FriendlyError(status as integer, err as string) as string
+    if status = 401 then return "Login failed — check username and password"
+    if status = 403 then return "The server refused access (403)"
+    if status = 404 then return "Not found on the server (404)"
+    if status = 0
+        msg = "Can't reach the server — check the URL and your network"
+        if err <> "" then msg = msg + " (" + err + ")"
+        return msg
+    end if
+    if status >= 500 then return "The server hit an internal error (" + StrI(status).Trim() + ")"
+    return "Request failed (HTTP " + StrI(status).Trim() + ")"
+end function
+
+' Human-readable message for a Video node error code
+function Frigate_FriendlyVideoError(code as integer, msg as string) as string
+    if code = -1 then return "Couldn't connect to the video stream"
+    if code = -2 then return "The video stream timed out"
+    if code = -3 then return "This video format isn't supported by your Roku"
+    if code = -4 then return "The video is unavailable right now"
+    if code = -5 then return "The video couldn't be decoded"
+    if msg <> "" then return msg
+    return "Playback failed"
 end function
 
 function TimeUtil_FormatEpoch(epoch as double) as string
