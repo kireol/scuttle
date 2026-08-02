@@ -9,7 +9,7 @@ sub execute()
     if Left(url, 4) <> "http" then url = server.baseUrl + url
 
     headers = Frigate_AuthHeaders(server)
-    res = doRequest(url, headers, req.method, req.body, req.savePath)
+    res = doRequest(url, headers, req.method, req.body, req.savePath, server.verifyTls = true)
 
     newToken = ""
     if res.status = 401 and server.authType = "frigate" and server.username <> ""
@@ -20,7 +20,7 @@ sub execute()
             server2.Append(server)
             server2.token = token
             headers = Frigate_AuthHeaders(server2)
-            res = doRequest(url, headers, req.method, req.body, req.savePath)
+            res = doRequest(url, headers, req.method, req.body, req.savePath, server.verifyTls = true)
         end if
     end if
 

@@ -24,6 +24,8 @@ end sub
 
 function rows() as object
     authLabel = m.server.authType
+    verifyLabel = "off"
+    if m.server.verifyTls = true then verifyLabel = "on"
     return [
         { key: "name", title: "Name: " + m.server.name },
         { key: "baseUrl", title: "URL: " + m.server.baseUrl },
@@ -33,6 +35,7 @@ function rows() as object
         { key: "password", title: "Password: " + String(Len(m.server.password), "*") },
         { key: "liveMode", title: "Live view: " + m.server.liveMode + "  (OK cycles)" },
         { key: "streamType", title: "Stream type: " + m.server.streamType + "  (OK picks from server)" },
+        { key: "verifyTls", title: "Verify TLS certificate: " + verifyLabel + "  (OK toggles)" },
         { key: "test", title: "▶ Test Connection" },
         { key: "save", title: "✔ Save" },
         { key: "delete", title: "✖ Delete Server" }
@@ -73,6 +76,9 @@ sub onSelect()
         rebuild()
     else if row.key = "streamType"
         fetchStreamTypes()
+    else if row.key = "verifyTls"
+        m.server.verifyTls = not (m.server.verifyTls = true)
+        rebuild()
     else if row.key = "test"
         testConnection()
     else if row.key = "save"

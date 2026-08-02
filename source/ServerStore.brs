@@ -12,6 +12,7 @@ function ServerStore_Load() as object
                 if not s.DoesExist("cfProxied") then s.cfProxied = false
                 if not s.DoesExist("liveMode") then s.liveMode = "video"
                 if not s.DoesExist("streamType") then s.streamType = "auto"
+                if not s.DoesExist("verifyTls") then s.verifyTls = false
             end for
             return data
         end if
@@ -23,6 +24,24 @@ sub ServerStore_SaveAll(servers as object)
     sec = ServerStore_Section()
     sec.Write("servers", FormatJson(servers))
     sec.Flush()
+    Registry_WarnIfLarge()
+end sub
+
+' Roku gives a channel ~32KB of registry total. Server records carry JWTs
+' that can be sizeable, so warn (console only) while there is still room to
+' act — a failed Flush() would otherwise lose data silently.
+sub Registry_WarnIfLarge()
+    total = 0
+    reg = CreateObject("roRegistry")
+    for each sectionName in reg.GetSectionList()
+        sec = CreateObject("roRegistrySection", sectionName)
+        for each key in sec.GetKeyList()
+            total = total + Len(key) + Len(sec.Read(key))
+        end for
+    end for
+    if total > 24000
+        print "[store] WARNING: registry usage ~"; Int(total / 1024); "KB of the 32KB cap"
+    end if
 end sub
 
 sub ServerStore_Upsert(server as object)
@@ -69,5 +88,6 @@ function ServerStore_NewServer() as object
         cfProxied: false
         liveMode: "video"
         streamType: "auto"
+        verifyTls: false
     }
 end function

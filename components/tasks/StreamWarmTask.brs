@@ -14,15 +14,16 @@ sub execute()
     base = Frigate_HlsBaseUrl(m.top.playlistUrl)
     clock = CreateObject("roTimespan")
     lastSeg = ""
+    verify = (m.top.server.verifyTls = true)
     while (not m.top.quit) and clock.TotalMilliseconds() < 25000
-        res = doRequest(m.top.playlistUrl, headers, "GET", "", "")
+        res = doRequest(m.top.playlistUrl, headers, "GET", "", "", verify)
         if res.status <> 200 then exit while
         entries = Frigate_PlaylistEntries(res.body)
         if entries.Count() > 0
             seg = entries[entries.Count() - 1]
             if seg <> lastSeg
                 lastSeg = seg
-                doRequest(base + seg, headers, "GET", "", "")
+                doRequest(base + seg, headers, "GET", "", "", verify)
             end if
         end if
         sleep(700)
