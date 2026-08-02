@@ -28,7 +28,7 @@
         <Label id="status" translation="[60, 1010]" color="0x8A959CFF" text="" width="1800" />
         <!-- bottom-right: the Roku OS screensaver draws its own clock top-right
              when nothing is playing, and two stacked times looks broken -->
-        <Label id="clock" translation="[1560, 1004]" width="300" horizAlign="right"
+        <Label id="clock" translation="[1360, 1004]" width="500" horizAlign="right"
                color="0xFFFFFFFF" font="font:LargeBoldSystemFont" visible="false" />
         <!-- toast for fresh review alerts; OK while visible jumps to the camera -->
         <Group id="toast" visible="false" translation="[460, 870]">
@@ -40,6 +40,8 @@
         <Timer id="clockTimer" duration="10" repeat="true" />
         <Timer id="actTimer" duration="60" repeat="true" />
         <Timer id="staleTimer" duration="30" repeat="true" />
+        <!-- weather refresh for the clock box -->
+        <Timer id="weatherTimer" duration="900" repeat="true" />
         <!-- delayed first start for the keepalive: a play issued during scene
              construction wedges with state stuck on "playing" -->
         <Timer id="kickTimer" duration="2" repeat="false" />

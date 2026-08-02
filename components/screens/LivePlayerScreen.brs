@@ -41,6 +41,10 @@ sub init()
     m.clockLabel.ObserveFieldScoped("visible", "updateBottomBar")
     m.clockTimer = m.top.FindNode("clockTimer")
     m.clockTimer.ObserveFieldScoped("fire", "onClockTick")
+    m.weatherTimer = m.top.FindNode("weatherTimer")
+    m.weatherTimer.ObserveFieldScoped("fire", "fetchWeather")
+    m.weatherText = ""
+    m.weatherTask = invalid
     m.retryTimer = m.top.FindNode("retryTimer")
     m.retryTimer.ObserveFieldScoped("fire", "onRetryTick")
     m.masterRetryTimer = m.top.FindNode("masterRetryTimer")
@@ -136,6 +140,7 @@ sub onShown()
             m.clockLabel.visible = true
             m.modeIcon.visible = true
             m.clockTimer.control = "start"
+            fetchWeather()
         end if
         if m.top.cycleMode
             m.cycleTimer.duration = st.cycleSecs
@@ -155,7 +160,47 @@ sub onShown()
 end sub
 
 sub onClockTick()
-    m.clockLabel.text = TimeUtil_FormatClock()
+    txt = TimeUtil_FormatClock()
+    if m.weatherText <> "" then txt = m.weatherText + "   " + txt
+    m.clockLabel.text = txt
+    layoutClockBox()
+end sub
+
+' Size the snug clock backdrop to its content (weather makes it wider)
+sub layoutClockBox()
+    w = Len(m.clockLabel.text) * 17 + 90
+    if w < 200 then w = 200
+    x = 1880 - w
+    m.clockBg.width = w
+    m.clockBg.translation = [x, 990]
+    m.modeIcon.translation = [x + 14, 1000]
+end sub
+
+' Per-server weather for the clock box (see HomeScreen for the same flow)
+sub fetchWeather()
+    srv = m.top.server
+    if srv = invalid or srv.zipcode = invalid or srv.zipcode = ""
+        m.weatherText = ""
+        onClockTick()
+        return
+    end if
+    if m.weatherTask <> invalid then return
+    t = CreateObject("roSGNode", "WeatherTask")
+    t.zipcode = srv.zipcode
+    if srv.zipLat <> invalid then t.lat = srv.zipLat
+    if srv.zipLon <> invalid then t.lon = srv.zipLon
+    t.ObserveFieldScoped("output", "onWeather")
+    t.control = "RUN"
+    m.weatherTask = t
+    m.weatherTimer.control = "start"
+end sub
+
+sub onWeather(ev as object)
+    out = ev.GetData()
+    m.weatherTask = invalid
+    if out.ok <> true then return
+    m.weatherText = Weather_Format(out.tempF, out.precipIn)
+    onClockTick()
 end sub
 
 sub updateBottomBar()
@@ -227,6 +272,8 @@ sub onTourConfig(ev as object)
         m.serverSnapshot = (stored.snapshot = true)
     end if
     m.sawZeroLen = false
+    m.weatherText = ""
+    fetchWeather()
     m.idx = 0
     buildSwitcher()
     startCam()

@@ -47,7 +47,7 @@
              modeIcon: ● = snapshots, LIVE = video -->
         <Label id="modeIcon" translation="[1596, 1000]" width="100"
                color="0xFFFFFFFF" visible="false" />
-        <Label id="clock" translation="[1560, 1000]" width="300" horizAlign="right"
+        <Label id="clock" translation="[1360, 1000]" width="500" horizAlign="right"
                color="0xFFFFFFFF" visible="false" />
         <!-- translucent strip behind the bottom text so it always has contrast
              against video or snapshots; visibility follows the labels below.
@@ -87,6 +87,8 @@
         <Timer id="clockTimer" duration="10" repeat="true" />
         <!-- quiet background video retry while downgraded to snapshots -->
         <Timer id="retryTimer" duration="180" repeat="true" />
+        <!-- weather refresh for the clock box -->
+        <Timer id="weatherTimer" duration="900" repeat="true" />
         <!-- 1s cadence for master-playlist polling while MediaMTX warms up -->
         <Timer id="masterRetryTimer" duration="1" repeat="false" />
         <!-- 1s cadence for media-playlist polling while segments accumulate -->
