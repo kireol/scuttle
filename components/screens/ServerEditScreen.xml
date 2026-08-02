@@ -13,9 +13,20 @@
     <children>
         <Label id="title" text="Edit Server" translation="[120, 60]"
                color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />
+        <Label id="hint" text="OK: change    ►: actions    Back: return"
+               translation="[560, 76]" color="0x8A959CFF" />
         <LabelList id="list" translation="[120, 160]" itemSize="[1000, 60]"
                    numRows="12" vertFocusAnimationStyle="floatingFocus"
                    color="0xE0E6EAFF" focusedColor="0x10545CFF" />
-        <Label id="status" translation="[120, 920]" color="0x8A959CFF" text="" width="1400" />
+        <!-- scroll indicator for the field list -->
+        <Rectangle id="scrollTrack" translation="[1136, 160]" width="6" height="720"
+                   color="0x2A3238FF" visible="false" />
+        <Rectangle id="scrollThumb" translation="[1136, 160]" width="6" height="80"
+                   color="0x6E7A82FF" visible="false" />
+        <!-- action buttons live to the right: press ► from the list -->
+        <LabelList id="buttons" translation="[1250, 160]" itemSize="[540, 60]"
+                   numRows="3" vertFocusAnimationStyle="floatingFocus"
+                   color="0xE0E6EAFF" focusedColor="0x10545CFF" />
+        <Label id="status" translation="[120, 920]" color="0x8A959CFF" text="" width="1660" />
     </children>
 </component>
