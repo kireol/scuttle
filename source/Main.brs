@@ -29,8 +29,16 @@ sub Main(args as dynamic)
         else if type(msg) = "roInputEvent"
             info = msg.GetInfo()
             if info <> invalid and info.cmd <> invalid and info.cmd = "addserver"
-                HandleAddServer(info)
-                scene.serversChanged = true
+                ' registry writes must happen on the render thread (see
+                ' AppScene.addServerInfo) — main-thread flushes are not
+                ' reliably visible to render-thread readers
+                scene.addServerInfo = info
+            else if info <> invalid and info.cmd <> invalid and info.cmd = "listservers"
+                ' debug aid: enumerate registry servers on the console, e.g.
+                ' curl -d '' "http://<roku>:8060/input?cmd=listservers"
+                for each s in ServerStore_Load()
+                    print "[main] server name='"; s.name; "' unit="; s.tempUnit; " zip="; s.zipcode; " url="; s.baseUrl
+                end for
             else if info <> invalid and info.cmd <> invalid and info.cmd = "runtests"
                 ' Instant-Resume devices only RESUME on ECP launch, so the
                 ' RunTests launch arg is unreliable — this input command runs
@@ -43,43 +51,3 @@ sub Main(args as dynamic)
         end if
     end while
 end sub
-
-sub HandleAddServer(info as object)
-    ' Upsert by name so re-running an add-server script updates in place
-    ' instead of stacking duplicates
-    srv = invalid
-    if info.name <> invalid
-        for each s in ServerStore_Load()
-            if s.name = info.name
-                srv = s
-                exit for
-            end if
-        end for
-    end if
-    if srv = invalid then srv = ServerStore_NewServer()
-    if info.name <> invalid then srv.name = info.name
-    if info.url <> invalid
-        newUrl = Frigate_NormalizeBaseUrl(info.url)
-        ' a different address means the Cloudflare detection must start over
-        if srv.DoesExist("cfProxied") and newUrl <> srv.baseUrl then srv.cfProxied = false
-        srv.baseUrl = newUrl
-    end if
-    if info.username <> invalid then srv.username = info.username
-    if info.password <> invalid then srv.password = info.password
-    if info.authtype <> invalid then srv.authType = info.authtype
-    if info.go2rtcport <> invalid
-        srv.go2rtcPort = Val(info.go2rtcport)
-        if srv.go2rtcPort = 0 then srv.go2rtcPort = 1984
-    end if
-    if info.zipcode <> invalid
-        srv.zipcode = info.zipcode
-        srv.zipLat = ""
-        srv.zipLon = ""
-    end if
-    if info.tempunit <> invalid and (info.tempunit = "f" or info.tempunit = "c")
-        srv.tempUnit = info.tempunit
-    end if
-    print "[main] addserver via ECP input: "; srv.name; " "; srv.baseUrl
-    ServerStore_Upsert(srv)
-end sub
-
