@@ -22,14 +22,14 @@ sub execute()
             else
                 url = server.baseUrl + Frigate_SnapshotPath(cam, m.top.height)
             end if
-            res = doRequest(url, headers, "GET", "", path)
+            res = doRequest(url, headers, "GET", "", path, server.verifyTls = true)
             if res.status = 401 and server.authType = "frigate" and server.username <> ""
                 token = doLogin(server)
                 if token <> ""
                     server.token = token
                     m.top.newToken = token
                     headers = Frigate_AuthHeaders(server)
-                    res = doRequest(url, headers, "GET", "", path)
+                    res = doRequest(url, headers, "GET", "", path, server.verifyTls = true)
                 end if
             end if
             ok = (res.status >= 200 and res.status < 300)
@@ -41,13 +41,17 @@ sub execute()
             end if
         end for
         seq = seq + 1
-        ' wait out the configured refresh interval, staying responsive to quit
+        ' wait out the configured refresh interval, staying responsive to quit.
+        ' Wall-clock, not a sleep counter: when the app is suspended (Instant
+        ' Resume) the suspended time counts, so snapshots refresh immediately
+        ' on resume instead of sitting stale for a full interval.
         waitMs = m.top.refreshMs
         if waitMs < 1000 then waitMs = 10000
-        elapsed = 0
-        while elapsed < waitMs and not m.top.quit
+        waitStart = CreateObject("roDateTime").AsSeconds()
+        while not m.top.quit
             sleep(250)
-            elapsed = elapsed + 250
+            now = CreateObject("roDateTime").AsSeconds()
+            if (now - waitStart) * 1000 >= waitMs then exit while
         end while
     end while
 end sub

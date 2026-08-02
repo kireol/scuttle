@@ -30,8 +30,9 @@ sub playCurrent()
     content.title = item.title
     headers = authHeaderStrings()
     if headers.Count() > 0 then content.HttpHeaders = headers
-    ' No HttpCertificatesFile: the Video node only verifies TLS when a CA bundle
-    ' is set, and Frigate's built-in cert is self-signed
+    ' The Video node only verifies TLS when a CA bundle is set; Frigate's
+    ' built-in cert is self-signed, so verification is opt-in per server
+    if m.top.server <> invalid and m.top.server.verifyTls = true then content.HttpCertificatesFile = "common:/certs/ca-bundle.crt"
     m.video.content = content
     m.video.control = "play"
     m.titleLabel.text = item.title

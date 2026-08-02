@@ -16,6 +16,7 @@ sub Test_ServerStore(r as object)
     T("new server defaults cfProxied", s.cfProxied = false, r)
     T("new server defaults liveMode", s.liveMode = "video", r)
     T("new server defaults streamType", s.streamType = "auto", r)
+    T("new server defaults verifyTls", s.verifyTls = false, r)
 
     s.name = "Home"
     s.baseUrl = "http://10.0.0.5:8971"
@@ -42,6 +43,7 @@ sub Test_ServerStore(r as object)
     T("load defaults cfProxied on legacy records", legacy[0].cfProxied = false, r)
     T("load defaults liveMode on legacy records", legacy[0].liveMode = "video", r)
     T("load defaults streamType on legacy records", legacy[0].streamType = "auto", r)
+    T("load defaults verifyTls on legacy records", legacy[0].verifyTls = false, r)
 
     if backup <> ""
         sec.Write("servers", backup)

@@ -1,5 +1,7 @@
 ' Synchronous request. Returns { status, body, headersArray, error }
-function doRequest(url as string, headers as object, method as string, body as string, savePath as string) as object
+' verifyTls: enforce CA-bundle verification of the peer (opt-in per server —
+' Frigate's built-in TLS on port 8971 is self-signed and would fail it)
+function doRequest(url as string, headers as object, method as string, body as string, savePath as string, verifyTls = false as boolean) as object
     xfer = CreateObject("roUrlTransfer")
     port = CreateObject("roMessagePort")
     xfer.SetMessagePort(port)
@@ -7,12 +9,12 @@ function doRequest(url as string, headers as object, method as string, body as s
     xfer.RetainBodyOnError(true)
     xfer.EnableEncodings(true)
     if Left(url, 8) = "https://"
-        ' Frigate's built-in TLS (port 8971) uses a self-signed cert, which fails
-        ' CA-bundle verification (curl error 60) — accept it for LAN servers
         xfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
         xfer.InitClientCertificates()
-        xfer.EnablePeerVerification(false)
-        xfer.EnableHostVerification(false)
+        if not verifyTls
+            xfer.EnablePeerVerification(false)
+            xfer.EnableHostVerification(false)
+        end if
     end if
     for each k in headers
         xfer.AddHeader(k, headers[k])
@@ -46,7 +48,7 @@ end function
 ' Returns JWT string or ""
 function doLogin(server as object) as string
     body = FormatJson({ user: server.username, password: server.password })
-    res = doRequest(server.baseUrl + "/api/login", {}, "POST", body, "")
+    res = doRequest(server.baseUrl + "/api/login", {}, "POST", body, "", server.verifyTls = true)
     if res.status < 200 or res.status >= 300 then return ""
     for each entry in res.headersArray
         for each k in entry
