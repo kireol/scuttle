@@ -501,13 +501,13 @@ sub showToast(item as object)
 end sub
 
 sub persistToken(newToken as string)
-    if newToken <> ""
+    if newToken <> "" and newToken <> m.server.token
         srv = ServerStore_GetById(m.server.id)
-        if srv <> invalid
+        if srv <> invalid and srv.token <> newToken
             srv.token = newToken
             ServerStore_Upsert(srv)
-            m.server.token = newToken
         end if
+        m.server.token = newToken
     end if
 end sub
 
@@ -608,6 +608,12 @@ end sub
 
 sub onSnapToken(ev as object)
     persistToken(ev.GetData())
+    ' hand the fresh token to every worker: without this each one keeps its
+    ' stale copy, 401s on its next request, and they re-login in a loop that
+    ' also rewrites the server record every few seconds
+    for each t in m.snapTasks
+        t.server = m.server
+    end for
 end sub
 
 sub onSnapshot(ev as object)

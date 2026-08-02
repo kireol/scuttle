@@ -24,6 +24,17 @@ sub execute()
             end if
             res = doRequest(url, headers, "GET", "", path, server.verifyTls = true)
             if res.status = 401 and server.authType = "frigate" and server.username <> ""
+                ' another worker may have refreshed the token already — try the
+                ' shared copy before burning a login (parallel workers otherwise
+                ' re-authenticate in a loop, each login invalidating the others)
+                shared = m.top.server
+                if shared <> invalid and shared.token <> invalid and shared.token <> server.token
+                    server.token = shared.token
+                    headers = Frigate_AuthHeaders(server)
+                    res = doRequest(url, headers, "GET", "", path, server.verifyTls = true)
+                end if
+            end if
+            if res.status = 401 and server.authType = "frigate" and server.username <> ""
                 token = doLogin(server)
                 if token <> ""
                     server.token = token
