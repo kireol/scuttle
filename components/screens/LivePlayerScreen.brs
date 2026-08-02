@@ -524,9 +524,14 @@ sub buildTiers(cam as string)
     print "[live] buildTiers "; cam; " portFirst="; m.top.portFirst; " cfProxied="; m.top.server.cfProxied; " names="; FormatJson(names)
     tiers = []
     for each n in names
+        ' fMP4 segments (&mp4) are needed for HEVC mains, but the h264 _roku
+        ' restream can use classic MPEG-TS segments — a different go2rtc muxer
+        ' path that Roku's HLS player tolerates far better
+        seg = "&mp4"
+        if Right(n, 5) = "_roku" then seg = ""
         urls = []
-        if useRaw then urls.Push(rawBase + n + "&mp4")
-        urls.Push(proxyBase + n + "&mp4")
+        if useRaw then urls.Push(rawBase + n + seg)
+        urls.Push(proxyBase + n + seg)
         tiers.Push(urls)
     end for
     m.tiers = tiers
