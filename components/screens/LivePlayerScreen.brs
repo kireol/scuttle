@@ -61,6 +61,10 @@ sub init()
     m.sawZeroLen = false
     ' fallback trail for the info overlay
     m.attemptLog = []
+    ' cycle-all-servers tour state
+    m.tourIdx = 0
+    m.tourHops = 0
+    m.tourTask = invalid
     m.errorPanel = m.top.FindNode("errorPanel")
     m.errorDetail = m.top.FindNode("errorDetail")
     m.switcher = m.top.FindNode("switcher")
@@ -130,6 +134,11 @@ sub onShown()
             m.cycleTimer.duration = st.cycleSecs
             m.cycleTimer.control = "start"
         end if
+        if m.top.tourServers <> invalid
+            for i = 0 to m.top.tourServers.Count() - 1
+                if m.top.tourServers[i].id = m.top.server.id then m.tourIdx = i
+            end for
+        end if
         buildSwitcher()
         startCam()
         ' * on a home tile lands here with the info overlay requested
@@ -153,7 +162,64 @@ end sub
 sub onCycleTick()
     ' don't yank the screen away while the user is interacting
     if m.switcher.visible or m.infoPanel.visible then return
-    switchBy(1)
+    ' at the end of this server's cameras, an all-servers tour hops on
+    if m.top.tourServers <> invalid and m.top.tourServers.Count() > 1 and m.idx >= m.top.cameras.Count() - 1
+        advanceTourServer()
+    else
+        switchBy(1)
+    end if
+end sub
+
+' Move the tour to the next server: fetch its config, swap the player's
+' server context, and start at its first camera. Dead or camera-less
+' servers are skipped; if every other server fails, wrap locally.
+sub advanceTourServer()
+    if m.tourTask <> invalid then return   ' fetch already in flight
+    m.tourHops = m.tourHops + 1
+    if m.tourHops > m.top.tourServers.Count()
+        m.tourHops = 0
+        switchBy(1)
+        return
+    end if
+    m.tourIdx = (m.tourIdx + 1) mod m.top.tourServers.Count()
+    srv = m.top.tourServers[m.tourIdx]
+    print "[live] tour: fetching config for "; srv.name
+    t = CreateObject("roSGNode", "ApiTask")
+    t.input = { server: srv, path: "/api/config", method: "GET", body: "", savePath: "", context: "tour" + srv.id }
+    t.ObserveFieldScoped("output", "onTourConfig")
+    t.control = "RUN"
+    m.tourTask = t
+end sub
+
+sub onTourConfig(ev as object)
+    out = ev.GetData()
+    m.tourTask = invalid
+    srv = m.top.tourServers[m.tourIdx]
+    if out.context <> "tour" + srv.id then return
+    parsed = invalid
+    if out.ok then parsed = Frigate_ParseCameraConfig(ParseJson(out.body))
+    if parsed = invalid or parsed.cameras.Count() = 0
+        advanceTourServer()
+        return
+    end if
+    m.tourHops = 0
+    print "[live] tour: now on "; srv.name; " ("; parsed.cameras.Count(); " cameras)"
+    m.top.server = srv
+    m.top.cameras = parsed.cameras
+    m.top.liveStreams = parsed.liveStreams
+    m.top.liveStreamsSub = parsed.liveStreamsSub
+    m.top.snapPaths = []
+    m.serverTier = 0
+    m.serverSnapshot = false
+    stored = TierStore_Get(srv.id)
+    if stored <> invalid and srv.liveMode <> "snapshot"
+        m.serverTier = stored.tier
+        m.serverSnapshot = (stored.snapshot = true)
+    end if
+    m.sawZeroLen = false
+    m.idx = 0
+    buildSwitcher()
+    startCam()
 end sub
 
 ' Fresh camera: rebuild the URL attempt chain, starting at the tier the
@@ -216,7 +282,7 @@ sub enterSnapshotMode()
     m.errorPanel.visible = false
     m.snapMode = true
     m.snapFails = 0
-    m.modeIcon.text = "■"
+    m.modeIcon.text = "●"   ' ▶ = live video; ● = snapshots (■ has no glyph)
     m.videoCover.visible = true
     m.loadingLabel.text = "Loading..."
     m.loadingLabel.visible = true

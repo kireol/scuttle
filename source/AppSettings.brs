@@ -6,6 +6,7 @@ function AppSettings_Load() as object
         showClock: true
         showBoxes: false
         cycleSecs: 10
+        cycleScope: "single"
         lastServerId: ""
         lastGridIdx: 0
     }

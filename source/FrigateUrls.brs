@@ -63,6 +63,40 @@ function Frigate_LiveStreamNames(mainName as string, subName as string) as objec
     return names
 end function
 
+' Enabled cameras plus go2rtc live-stream picks from a parsed /api/config
+' response: prefer the main/high-res entry per camera and keep a low-res
+' fallback (panoramic mains exceed Roku's 3840x2160 decoder limit)
+function Frigate_ParseCameraConfig(cfg as object) as object
+    out = { cameras: [], liveStreams: {}, liveStreamsSub: {} }
+    if cfg = invalid or cfg.cameras = invalid then return out
+    for each cam in cfg.cameras
+        camCfg = cfg.cameras[cam]
+        enabled = true
+        if camCfg <> invalid and camCfg.enabled <> invalid then enabled = camCfg.enabled
+        if enabled then out.cameras.Push(cam)
+        if camCfg <> invalid and camCfg.live <> invalid and camCfg.live.streams <> invalid
+            pick = ""
+            subPick = ""
+            for each label in camCfg.live.streams
+                name = camCfg.live.streams[label]
+                if pick = "" then pick = name
+                if Right(name, 5) = "_main" then pick = name
+                if Right(name, 4) = "_sub" then subPick = name
+            end for
+            if subPick = "" then
+                for each label in camCfg.live.streams
+                    name = camCfg.live.streams[label]
+                    if name <> pick then subPick = name
+                end for
+            end if
+            if pick <> "" then out.liveStreams[cam] = pick
+            if subPick <> "" and subPick <> pick then out.liveStreamsSub[cam] = subPick
+        end if
+    end for
+    out.cameras.Sort()
+    return out
+end function
+
 ' Distinct stream-type suffixes present in a list of go2rtc stream names,
 ' e.g. ["front_main","front_sub","back_main"] -> ["_main","_sub"]. A suffix
 ' counts as a type when it is a known convention (_main/_sub/_roku) or

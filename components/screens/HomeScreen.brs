@@ -350,37 +350,10 @@ sub onConfig(ev as object)
         end if
     end if
     m.loadedServerId = m.server.id
-    m.cameras = []
-    m.liveStreams = {}
-    m.liveStreamsSub = {}
-    for each cam in cfg.cameras
-        camCfg = cfg.cameras[cam]
-        enabled = true
-        if camCfg <> invalid and camCfg.enabled <> invalid then enabled = camCfg.enabled
-        if enabled then m.cameras.Push(cam)
-        ' go2rtc restream names for live view: prefer the main/high-res entry,
-        ' and keep a low-res pick for fallback (7680-wide panoramic mains
-        ' exceed Roku's 3840x2160 decoder limit)
-        if camCfg <> invalid and camCfg.live <> invalid and camCfg.live.streams <> invalid
-            pick = ""
-            subPick = ""
-            for each label in camCfg.live.streams
-                name = camCfg.live.streams[label]
-                if pick = "" then pick = name
-                if Right(name, 5) = "_main" then pick = name
-                if Right(name, 4) = "_sub" then subPick = name
-            end for
-            if subPick = "" then
-                for each label in camCfg.live.streams
-                    name = camCfg.live.streams[label]
-                    if name <> pick then subPick = name
-                end for
-            end if
-            if pick <> "" then m.liveStreams[cam] = pick
-            if subPick <> "" and subPick <> pick then m.liveStreamsSub[cam] = subPick
-        end if
-    end for
-    m.cameras.Sort()
+    parsed = Frigate_ParseCameraConfig(cfg)
+    m.cameras = parsed.cameras
+    m.liveStreams = parsed.liveStreams
+    m.liveStreamsSub = parsed.liveStreamsSub
     m.status.text = ""
     buildGrid()
     startSnapshots()
@@ -624,6 +597,10 @@ sub openPlayer(startIndex as integer, cycleMode as boolean, openInfo = false as 
     player.startIndex = startIndex
     player.cycleMode = cycleMode
     player.openInfo = openInfo
+    ' "cycle all servers": the tour visits every server, starting from this one
+    if cycleMode and AppSettings_Load().cycleScope = "all" and m.servers.Count() > 1
+        player.tourServers = m.servers
+    end if
     player.liveStreams = m.liveStreams
     player.liveStreamsSub = m.liveStreamsSub
     player.portFirst = AppSettings_Load().livePortFirst
