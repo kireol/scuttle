@@ -15,6 +15,9 @@
         <Label id="name" translation="[0, 330]" width="580" horizAlign="center"
                color="0xE0E6EAFF" font="font:MediumBoldSystemFont" />
         <Label id="badge" text="offline" translation="[480, 330]" color="0xFF6B6BFF" visible="false" />
+        <!-- recent review activity (motion/object) on this camera -->
+        <Label id="actBadge" text="● activity" translation="[12, 10]" color="0xFF6B6BFF"
+               font="font:SmallBoldSystemFont" visible="false" />
         <Rectangle id="focusRing" width="580" height="362" color="0x00000000" visible="false">
             <Rectangle id="frTop" width="580" height="4" color="0x2BB3C0FF" />
             <Rectangle id="frBottom" width="580" height="4" translation="[0, 358]" color="0x2BB3C0FF" />

@@ -14,24 +14,36 @@ sub onShownList()
     refresh()
 end sub
 
+' Typed row model so servers and app settings stay visually separated;
+' header rows are inert
+function buildRows() as object
+    rows = []
+    rows.Push({ kind: "header", title: "SERVERS" })
+    for each s in m.servers
+        rows.Push({ kind: "server", id: s.id, title: "  " + s.name + "  (" + s.baseUrl + ")" })
+    end for
+    rows.Push({ kind: "add", title: "  + Add Server" })
+    rows.Push({ kind: "header", title: "APP SETTINGS" })
+    liveMode = "try go2rtc port first, then Frigate proxy"
+    if not m.settings.livePortFirst then liveMode = "Frigate proxy only"
+    clockLabel = "off"
+    if m.settings.showClock = true then clockLabel = "on"
+    rows.Push({ kind: "refresh", title: "  Snapshot refresh: " + StrI(m.settings.refreshSecs).Trim() + "s" })
+    rows.Push({ kind: "columns", title: "  Home screen columns: " + StrI(m.settings.gridColumns).Trim() })
+    rows.Push({ kind: "portFirst", title: "  Live streaming: " + liveMode })
+    rows.Push({ kind: "clock", title: "  Show clock: " + clockLabel })
+    rows.Push({ kind: "cycle", title: "  Camera cycle time: " + StrI(m.settings.cycleSecs).Trim() + "s" })
+    return rows
+end function
+
 sub refresh()
     m.servers = ServerStore_Load()
     m.settings = AppSettings_Load()
+    m.rows = buildRows()
     content = CreateObject("roSGNode", "ContentNode")
-    for each s in m.servers
+    for each row in m.rows
         item = content.CreateChild("ContentNode")
-        item.title = s.name + "  (" + s.baseUrl + ")"
-    end for
-    addItem = content.CreateChild("ContentNode")
-    addItem.title = "+ Add Server"
-    liveMode = "try go2rtc port first, then Frigate proxy"
-    if not m.settings.livePortFirst then liveMode = "Frigate proxy only"
-    for each t in [
-        "Snapshot refresh: " + StrI(m.settings.refreshSecs).Trim() + "s",
-        "Home screen columns: " + StrI(m.settings.gridColumns).Trim(),
-        "Live streaming: " + liveMode]
-        item = content.CreateChild("ContentNode")
-        item.title = t
+        item.title = row.title
     end for
     idx = m.list.itemFocused
     m.list.content = content
@@ -40,29 +52,37 @@ sub refresh()
 end sub
 
 sub onSelect()
-    idx = m.list.itemSelected
-    if idx <= m.servers.Count()
+    row = m.rows[m.list.itemSelected]
+    if row.kind = "server" or row.kind = "add"
         edit = CreateObject("roSGNode", "ServerEditScreen")
-        if idx < m.servers.Count()
-            edit.serverId = m.servers[idx].id
-        end if
+        if row.kind = "server" then edit.serverId = row.id
         m.top.GetScene().CallFunc("pushScreen", edit)
         return
     end if
-    setting = idx - m.servers.Count() - 1
-    if setting = 0
+    if row.kind = "refresh"
         cycle = [5, 10, 15, 30, 60]
         cur = 0
         for i = 0 to cycle.Count() - 1
             if cycle[i] = m.settings.refreshSecs then cur = i
         end for
         m.settings.refreshSecs = cycle[(cur + 1) mod cycle.Count()]
-    else if setting = 1
+    else if row.kind = "columns"
         cols = m.settings.gridColumns + 1
         if cols > 4 then cols = 2
         m.settings.gridColumns = cols
-    else if setting = 2
+    else if row.kind = "portFirst"
         m.settings.livePortFirst = not m.settings.livePortFirst
+    else if row.kind = "clock"
+        m.settings.showClock = not (m.settings.showClock = true)
+    else if row.kind = "cycle"
+        cycle = [5, 10, 15, 30, 60]
+        cur = 1   ' default 10s
+        for i = 0 to cycle.Count() - 1
+            if cycle[i] = m.settings.cycleSecs then cur = i
+        end for
+        m.settings.cycleSecs = cycle[(cur + 1) mod cycle.Count()]
+    else
+        return   ' header row — nothing to do
     end if
     AppSettings_Save(m.settings)
     refresh()

@@ -45,8 +45,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if press and key = "back"
         if m.screens.Count() > 1
             PopScreen()
-            return true
         end if
+        ' Always swallow back at the scene: during screen transitions focus can
+        ' be in limbo, and an unhandled back here silently exits the app
+        ' (EXIT_USER_NAV) — HomeScreen owns the confirm-exit dialog instead.
+        return true
     end if
     return false
 end function

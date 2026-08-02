@@ -14,14 +14,22 @@ sub onContentChange()
     if m.boundContent <> invalid
         m.boundContent.UnobserveFieldScoped("snapPath")
         m.boundContent.UnobserveFieldScoped("offline")
+        m.boundContent.UnobserveFieldScoped("hasActivity")
     end if
     m.boundContent = c
     c.ObserveFieldScoped("snapPath", "onSnapChanged")
     c.ObserveFieldScoped("offline", "onOfflineChanged")
+    c.ObserveFieldScoped("hasActivity", "onActivityChanged")
     m.top.FindNode("name").text = c.cameraName
     if c.tileW > 0 then applySize(c.tileW, c.tileH)
     applySnap()
     applyOffline()
+    onActivityChanged()
+end sub
+
+sub onActivityChanged()
+    c = m.top.itemContent
+    if c <> invalid then m.top.FindNode("actBadge").visible = c.hasActivity
 end sub
 
 ' Resize all children for the configured grid tile size (defaults are 580x362)

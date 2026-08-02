@@ -3,11 +3,17 @@ sub init()
     m.tabRow = m.top.FindNode("tabRow")
     m.menuRow = m.top.FindNode("menuRow")
     m.status = m.top.FindNode("status")
+    m.clockLabel = m.top.FindNode("clock")
+    m.clockTimer = m.top.FindNode("clockTimer")
+    m.clockTimer.ObserveFieldScoped("fire", "onClockTick")
+    m.actTimer = m.top.FindNode("actTimer")
+    m.actTimer.ObserveFieldScoped("fire", "fetchActivity")
     m.grid.ObserveFieldScoped("itemSelected", "onTileSelected")
     m.top.ObserveField("wasShown", "onShown")
     m.top.ObserveField("visible", "onVisibleChange")
 
-    m.menuItems = ["Review", "Explore", "Recordings", "Settings"]
+    m.menuItems = ["Review", "Explore", "Recordings", "Cycle Cameras", "Settings"]
+    m.settingsIdx = 4   ' index of "Settings" in m.menuItems
     m.focusZone = "grid"   ' "tabs" | "menu" | "grid"
     m.tabIdx = 0
     m.menuIdx = 0
@@ -16,10 +22,27 @@ sub init()
     m.liveStreams = {}
     m.liveStreamsSub = {}
     m.loadedServerId = ""
-    m.pendingServerId = ""
-    m.snapTask = invalid
+    ' land on the server (and roughly the tile) the user last used
+    m.pendingServerId = AppSettings_Load().lastServerId
+    m.snapTasks = []
+    m.actTask = invalid
     m.pendingTask = invalid
     m.redirectedToSettings = false
+end sub
+
+sub onClockTick()
+    m.clockLabel.text = TimeUtil_FormatClock()
+end sub
+
+sub applyClockSetting()
+    show = AppSettings_Load().showClock = true
+    m.clockLabel.visible = show
+    if show
+        onClockTick()
+        m.clockTimer.control = "start"
+    else
+        m.clockTimer.control = "stop"
+    end if
 end sub
 
 sub onShown()
@@ -59,7 +82,7 @@ sub reloadServers()
         else
             m.status.text = "No servers configured — select Settings to add one"
             m.focusZone = "menu"
-            m.menuIdx = 3   ' Settings
+            m.menuIdx = m.settingsIdx
             m.top.SetFocus(true)
             renderMenu()
         end if
@@ -76,6 +99,12 @@ sub reloadServers()
     ' switching servers: drop the old server's grid entirely so stale
     ' cameras never linger while (or if) the new config loads
     if m.loadedServerId <> m.server.id then clearCameras()
+    st = AppSettings_Load()
+    if st.lastServerId <> m.server.id
+        st.lastServerId = m.server.id
+        AppSettings_Save(st)
+    end if
+    applyClockSetting()
     renderTabs()
     renderMenu()
     fetchConfig()
@@ -167,7 +196,7 @@ sub renderMenu()
         else
             lbl.color = "0x8A959CFF"
         end if
-        x = x + 220
+        x = x + Len(m.menuItems[i]) * 17 + 70
     end for
 end sub
 
@@ -244,6 +273,39 @@ sub onConfig(ev as object)
     m.status.text = ""
     buildGrid()
     startSnapshots()
+    m.actTimer.control = "start"
+    fetchActivity()
+end sub
+
+' --- activity badges: cameras with review items (motion/objects) in the
+' --- last 15 minutes get a marker on their grid tile
+sub fetchActivity()
+    if not m.top.visible or m.cameras.Count() = 0 then return
+    if m.actTask <> invalid then return   ' previous poll still in flight
+    now = CreateObject("roDateTime").AsSeconds()
+    t = CreateObject("roSGNode", "ApiTask")
+    t.input = { server: m.server, path: "/api/review?limit=100&after=" + StrI(now - 900).Trim(), method: "GET", body: "", savePath: "", context: m.server.id }
+    t.ObserveFieldScoped("output", "onActivity")
+    t.control = "RUN"
+    m.actTask = t
+end sub
+
+sub onActivity(ev as object)
+    out = ev.GetData()
+    m.actTask = invalid
+    if out.context <> m.server.id then return   ' stale (server switched)
+    if not out.ok then return
+    items = ParseJson(out.body)
+    if items = invalid or GetInterface(items, "ifArray") = invalid then return
+    active = {}
+    for each item in items
+        if item.camera <> invalid then active[item.camera] = true
+    end for
+    if m.grid.content = invalid then return
+    for i = 0 to m.grid.content.GetChildCount() - 1
+        tile = m.grid.content.GetChild(i)
+        tile.hasActivity = active.DoesExist(tile.cameraName)
+    end for
 end sub
 
 sub persistToken(newToken as string)
@@ -277,29 +339,45 @@ sub buildGrid()
         tile.tileH = tileH
     end for
     m.grid.content = content
+    ' restore the last-used tile (persisted across launches); ignore when the
+    ' saved index belongs to a server with fewer cameras
+    lastIdx = st.lastGridIdx
+    if lastIdx > 0 and lastIdx < content.GetChildCount() then m.grid.jumpToItem = lastIdx
     if m.focusZone = "grid" then m.grid.SetFocus(true)
 end sub
 
+' Up to 3 workers, cameras split round-robin: one slow camera (or server)
+' no longer stretches the refresh interval for every tile
 sub startSnapshots()
     stopSnapshots()
     if m.cameras.Count() = 0 then return
-    t = CreateObject("roSGNode", "SnapshotTask")
-    t.server = m.server
-    t.cameras = m.cameras
-    t.refreshMs = AppSettings_Load().refreshSecs * 1000
-    t.ObserveFieldScoped("result", "onSnapshot")
-    t.ObserveFieldScoped("newToken", "onSnapToken")
-    t.control = "RUN"
-    m.snapTask = t
+    workers = 3
+    if m.cameras.Count() < workers then workers = m.cameras.Count()
+    refreshMs = AppSettings_Load().refreshSecs * 1000
+    for w = 0 to workers - 1
+        chunk = []
+        for i = w to m.cameras.Count() - 1 step workers
+            chunk.Push(m.cameras[i])
+        end for
+        t = CreateObject("roSGNode", "SnapshotTask")
+        t.server = m.server
+        t.cameras = chunk
+        t.refreshMs = refreshMs
+        t.tag = "w" + StrI(w).Trim() + "_"
+        t.ObserveFieldScoped("result", "onSnapshot")
+        t.ObserveFieldScoped("newToken", "onSnapToken")
+        t.control = "RUN"
+        m.snapTasks.Push(t)
+    end for
 end sub
 
 sub stopSnapshots()
-    if m.snapTask <> invalid
-        m.snapTask.UnobserveFieldScoped("result")
-        m.snapTask.UnobserveFieldScoped("newToken")
-        m.snapTask.quit = true
-        m.snapTask = invalid
-    end if
+    for each t in m.snapTasks
+        t.UnobserveFieldScoped("result")
+        t.UnobserveFieldScoped("newToken")
+        t.quit = true
+    end for
+    m.snapTasks = []
 end sub
 
 sub onSnapToken(ev as object)
@@ -324,25 +402,31 @@ sub onSnapshot(ev as object)
 end sub
 
 sub onTileSelected()
-    player = CreateObject("roSGNode", "LivePlayerScreen")
-    if player <> invalid
-        player.server = m.server
-        player.cameras = m.cameras
-        player.startIndex = m.grid.itemSelected
-        player.liveStreams = m.liveStreams
-        player.liveStreamsSub = m.liveStreamsSub
-        player.portFirst = AppSettings_Load().livePortFirst
-        paths = []
-        if m.grid.content <> invalid
-            for i = 0 to m.grid.content.GetChildCount() - 1
-                paths.Push(m.grid.content.GetChild(i).snapPath)
-            end for
-        end if
-        player.snapPaths = paths
-        m.top.GetScene().CallFunc("pushScreen", player)
-    else
-        m.status.text = "Live player arrives in the next task"
+    st = AppSettings_Load()
+    if st.lastGridIdx <> m.grid.itemSelected
+        st.lastGridIdx = m.grid.itemSelected
+        AppSettings_Save(st)
     end if
+    openPlayer(m.grid.itemSelected, false)
+end sub
+
+sub openPlayer(startIndex as integer, cycleMode as boolean)
+    player = CreateObject("roSGNode", "LivePlayerScreen")
+    player.server = m.server
+    player.cameras = m.cameras
+    player.startIndex = startIndex
+    player.cycleMode = cycleMode
+    player.liveStreams = m.liveStreams
+    player.liveStreamsSub = m.liveStreamsSub
+    player.portFirst = AppSettings_Load().livePortFirst
+    paths = []
+    if m.grid.content <> invalid
+        for i = 0 to m.grid.content.GetChildCount() - 1
+            paths.Push(m.grid.content.GetChild(i).snapPath)
+        end for
+    end if
+    player.snapPaths = paths
+    m.top.GetScene().CallFunc("pushScreen", player)
 end sub
 
 sub openMenuItem()
@@ -351,6 +435,14 @@ sub openMenuItem()
         return
     end if
     name = m.menuItems[m.menuIdx]
+    if name = "Cycle Cameras"
+        if m.cameras.Count() = 0
+            m.status.text = "No cameras loaded yet"
+        else
+            openPlayer(0, true)
+        end if
+        return
+    end if
     screenName = ""
     if name = "Review" then screenName = "ReviewScreen"
     if name = "Explore" then screenName = "ExploreScreen"

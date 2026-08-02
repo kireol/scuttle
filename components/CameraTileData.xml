@@ -4,6 +4,7 @@
         <field id="cameraName" type="string" value="" />
         <field id="snapPath" type="string" value="" />
         <field id="offline" type="boolean" value="false" />
+        <field id="hasActivity" type="boolean" value="false" />
         <field id="tileW" type="integer" value="0" />
         <field id="tileH" type="integer" value="0" />
     </interface>
