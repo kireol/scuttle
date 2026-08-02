@@ -6,6 +6,11 @@
         <field id="serversChanged" type="boolean" value="false" alwaysNotify="true" />
         <!-- server id HomeScreen should switch its tab to (set before popToRoot) -->
         <field id="goToServerId" type="string" value="" alwaysNotify="true" />
+        <!-- ECP addserver payload, handed over from Main: the registry write
+             must happen on the render thread, because writes flushed on the
+             main thread are not reliably visible to render-thread readers,
+             which then re-save their stale copy over the new data -->
+        <field id="addServerInfo" type="assocarray" alwaysNotify="true" onChange="onAddServerInfo" />
         <function name="pushScreen" />
         <function name="popToRoot" />
     </interface>

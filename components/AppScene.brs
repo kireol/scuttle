@@ -7,6 +7,13 @@ sub onReady()
     if m.top.ready and m.screens.Count() = 0 then ShowFirstScreen()
 end sub
 
+sub onAddServerInfo()
+    info = m.top.addServerInfo
+    if info = invalid then return
+    HandleAddServer(info)
+    m.top.serversChanged = true
+end sub
+
 sub ShowFirstScreen()
     DoPushScreen(CreateObject("roSGNode", "HomeScreen"))
 end sub
