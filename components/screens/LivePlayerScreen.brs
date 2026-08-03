@@ -123,6 +123,7 @@ sub onWatchdog()
 end sub
 
 sub onShown()
+    Hints_Show("playerKeys", "Camera view keys", "Up: stream info and quality" + Chr(10) + "Left / Right: switch cameras" + Chr(10) + "OK: stop camera cycling" + Chr(10) + "Down: retry video from full quality")
     if not m.started
         m.started = true
         m.idx = m.top.startIndex
@@ -205,7 +206,7 @@ sub onWeather(ev as object)
     unit = "f"
     srv = m.top.server
     if srv <> invalid and srv.tempUnit <> invalid and srv.tempUnit = "c" then unit = "c"
-    m.weatherText = Weather_Format(out.tempF, out.precipIn, unit)
+    m.weatherText = Weather_Format(out.tempF, out.precip, unit)
     onClockTick()
 end sub
 

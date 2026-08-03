@@ -86,7 +86,7 @@ sub onWeather(ev as object)
     if out.ok <> true then return
     unit = "f"
     if m.server.tempUnit <> invalid and m.server.tempUnit = "c" then unit = "c"
-    m.weatherText = Weather_Format(out.tempF, out.precipIn, unit)
+    m.weatherText = Weather_Format(out.tempF, out.precip, unit)
     onClockTick()
     ' cache the geocode so the next fetch skips zippopotam
     if m.server.zipLat = "" and out.lat <> invalid and out.lat <> ""
@@ -113,6 +113,16 @@ sub applyClockSetting()
 end sub
 
 sub onShown()
+    if m.hintChecked = invalid
+        m.hintChecked = true
+        st = AppSettings_Load()
+        st.launchCount = st.launchCount + 1
+        AppSettings_Save(st)
+        shown = Hints_Show("setup", "Get the best live video", "For smooth live video with audio, add h264 _roku streams to go2rtc and run MediaMTX on your Frigate server — see the README for both recipes. Snapshot view always works without them.")
+        if not shown and st.launchCount >= 5
+            Hints_Show("donate", "Enjoying Scuttle?", "If this app is useful to you, consider supporting its development. See the README for ways to contribute.")
+        end if
+    end if
     ' keepalive start is deferred: playing during scene construction wedges
     ' the Video node with state stuck on "playing" and no actual session
     m.kickTimer.control = "start"

@@ -22,14 +22,10 @@ sub execute()
         return
     end if
     tempUnit = "fahrenheit"
-    precipUnit = "inch"
-    if m.top.unit = "c"
-        tempUnit = "celsius"
-        precipUnit = "mm"
-    end if
+    if m.top.unit = "c" then tempUnit = "celsius"
     url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon
-    url = url + "&current=temperature_2m&daily=precipitation_sum&forecast_days=1"
-    url = url + "&temperature_unit=" + tempUnit + "&precipitation_unit=" + precipUnit + "&timezone=auto"
+    url = url + "&current=temperature_2m&daily=rain_sum,showers_sum,snowfall_sum&forecast_days=1"
+    url = url + "&temperature_unit=" + tempUnit + "&timezone=auto"
     res = doRequest(url, {}, "GET", "", "")
     if res.status <> 200
         m.top.output = { ok: false }
@@ -40,9 +36,25 @@ sub execute()
         m.top.output = { ok: false }
         return
     end if
-    precip = 0.0
-    if j.daily <> invalid and j.daily.precipitation_sum <> invalid and j.daily.precipitation_sum.Count() > 0
-        if j.daily.precipitation_sum[0] <> invalid then precip = j.daily.precipitation_sum[0]
+    ' report what kind of precipitation today's forecast expects
+    rain = 0.0
+    snow = 0.0
+    if j.daily <> invalid
+        rain = rain + DailyFirst(j.daily.rain_sum) + DailyFirst(j.daily.showers_sum)
+        snow = snow + DailyFirst(j.daily.snowfall_sum)
     end if
-    m.top.output = { ok: true, tempF: j.current.temperature_2m, precipIn: precip, lat: lat, lon: lon }
+    precipType = ""
+    if rain > 0 and snow > 0
+        precipType = "rain/snow"
+    else if rain > 0
+        precipType = "rain"
+    else if snow > 0
+        precipType = "snow"
+    end if
+    m.top.output = { ok: true, tempF: j.current.temperature_2m, precip: precipType, lat: lat, lon: lon }
 end sub
+
+function DailyFirst(arr as dynamic) as float
+    if arr = invalid or arr.Count() = 0 or arr[0] = invalid then return 0.0
+    return arr[0]
+end function
