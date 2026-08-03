@@ -26,6 +26,7 @@ sub onShown()
         fetchCameras()
         fetchEvents()
     end if
+    Hints_Show("browseDetails", "Browsing tips", "OK opens an entry's snapshot and details. Up reaches the filter chips.")
     if m.focusZone = "grid" then m.grid.SetFocus(true) else m.top.SetFocus(true)
 end sub
 
@@ -173,19 +174,31 @@ sub onSelect()
     item = m.events[m.grid.itemSelected]
     srv = ServerStore_GetById(m.top.server.id)
     if srv = invalid then srv = m.top.server
-    ' Padded VOD range instead of clip.mp4: clips of 1-2s events flash and
-    ' close, and the range player behaves identically to Review playback
     endTs = item.end_time
-    if endTs = invalid then endTs = item.start_time + 30
-    startTs = item.start_time - 10
-    endTs = endTs + 15
-    if endTs - startTs < 40 then endTs = startTs + 40
-    url = Frigate_VodRangeUrl(srv, item.camera, startTs, endTs)
-    player = CreateObject("roSGNode", "VodPlayerScreen")
-    player.server = srv
-    player.playlist = [{ url: url, title: item.label + " — " + item.camera, format: "hls" }]
-    player.startIndex = 0
-    m.top.GetScene().CallFunc("pushScreen", player)
+    if endTs = invalid then endTs = item.start_time
+    lines = []
+    lines.Push("Label: " + item.label)
+    score = invalid
+    if item.data <> invalid and item.data.top_score <> invalid then score = item.data.top_score
+    if score = invalid and item.top_score <> invalid then score = item.top_score
+    if score <> invalid then lines.Push("Confidence: " + StrI(Int(score * 100 + 0.5)).Trim() + "%")
+    lines.Push("Camera: " + item.camera)
+    zones = ""
+    if item.zones <> invalid
+        for each z in item.zones
+            if zones <> "" then zones = zones + ", "
+            zones = zones + z
+        end for
+    end if
+    if zones <> "" then lines.Push("Zones: " + zones)
+    lines.Push("Start: " + TimeUtil_FormatEpoch(item.start_time))
+    if endTs > item.start_time then lines.Push("Duration: " + StrI(Int(endTs - item.start_time)).Trim() + "s")
+    detail = CreateObject("roSGNode", "DetailScreen")
+    detail.server = srv
+    detail.titleText = item.label + " — " + item.camera
+    detail.imagePaths = ["/api/events/" + item.id + "/snapshot.jpg?bbox=1", Frigate_EventThumbPath(item.id)]
+    detail.infoLines = lines
+    m.top.GetScene().CallFunc("pushScreen", detail)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean

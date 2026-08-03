@@ -8,6 +8,8 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/screens/RecordingsScreen.brs" />
     <script type="text/brightscript" uri="pkg:/source/ServerStore.brs" />
+    <script type="text/brightscript" uri="pkg:/source/AppSettings.brs" />
+    <script type="text/brightscript" uri="pkg:/source/Hints.brs" />
     <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
     <children>
         <Label id="title" text="Recordings" translation="[120, 50]" color="0xE0E6EAFF" font="font:LargeBoldSystemFont" />
