@@ -24,6 +24,7 @@ end sub
 
 sub onShown()
     m.list.SetFocus(true)
+    Hints_Show("editSave", "Editing servers", "Changes are applied when you save. Press right for Test Connection, Save and Delete; leaving with unsaved changes will ask what to do.")
 end sub
 
 sub loadServer()
