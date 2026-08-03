@@ -268,18 +268,12 @@ function Frigate_FriendlyVideoError(code as integer, msg as string) as string
 end function
 
 ' "72°F 0.12in" (imperial) / "21°C 3.2mm" (metric); precip omitted when zero
-function Weather_Format(temp as dynamic, precip as dynamic, unit = "f" as string) as string
+function Weather_Format(temp as dynamic, precipType as dynamic, unit = "f" as string) as string
     if temp = invalid then return ""
     s = StrI(Int(temp + 0.5)).Trim() + "°" + UCase(unit)
-    if precip <> invalid and precip > 0
-        if unit = "c"
-            tenths = Int(precip * 10 + 0.5)
-            s = s + " " + Str(tenths / 10.0).Trim() + "mm"
-        else
-            hundredths = Int(precip * 100 + 0.5)
-            s = s + " " + Str(hundredths / 100.0).Trim() + "in"
-        end if
-    end if
+    ' precipType is "rain", "snow", "rain/snow" or "" — what today's
+    ' forecast expects, not a measured amount
+    if precipType <> invalid and precipType <> "" then s = s + " " + precipType
     return s
 end function
 
