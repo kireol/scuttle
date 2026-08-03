@@ -18,6 +18,7 @@ end function
 ' Accepts either the wrapped {rev, servers} payload or a legacy plain array
 ' (which counts as revision 0). rev -1 = unusable.
 function ServerStore_ParseWrapper(raw as string) as object
+    if raw = "" then return { rev: -1, servers: invalid }
     parsed = ParseJson(raw)
     if parsed = invalid then return { rev: -1, servers: invalid }
     if GetInterface(parsed, "ifArray") <> invalid then return { rev: 0, servers: parsed }
@@ -33,10 +34,13 @@ function ServerStore_BestWrapper() as object
     regRaw = ""
     sec = ServerStore_Section()
     if sec.Exists("servers") then regRaw = sec.Read("servers")
-    ' ReadAsciiFile returns "" for a missing file; roFileSystem must not be
-    ' used here — it is a main/task-thread-only component and hard-crashes
-    ' the render thread
-    fileRaw = ReadAsciiFile(ServerStore_CachePath())
+    ' MatchFiles avoids the console error ReadAsciiFile prints for missing
+    ' files; roFileSystem must not be used here — it is a main/task-thread-
+    ' only component and hard-crashes the render thread
+    fileRaw = ""
+    if MatchFiles("cachefs:/", "scuttle_servers.json").Count() > 0
+        fileRaw = ReadAsciiFile(ServerStore_CachePath())
+    end if
     reg = ServerStore_ParseWrapper(regRaw)
     fil = ServerStore_ParseWrapper(fileRaw)
     ' ties go to the file: when the registry disk copy is stale it keeps an

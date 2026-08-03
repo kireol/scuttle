@@ -33,9 +33,14 @@ function PrefStore_LoadAll() as object
         end if
         regRaw = FormatJson(legacy)
     end if
-    fileRaw = ReadAsciiFile(PrefStore_CachePath())
-    reg = ParseJson(regRaw)
-    fil = ParseJson(fileRaw)
+    fileRaw = ""
+    if MatchFiles("cachefs:/", "scuttle_prefs.json").Count() > 0
+        fileRaw = ReadAsciiFile(PrefStore_CachePath())
+    end if
+    reg = invalid
+    if regRaw <> "" then reg = ParseJson(regRaw)
+    fil = invalid
+    if fileRaw <> "" then fil = ParseJson(fileRaw)
     best = invalid
     if fil <> invalid and fil.tiers <> invalid
         best = fil

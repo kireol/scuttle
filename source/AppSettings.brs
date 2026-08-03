@@ -7,6 +7,7 @@ function AppSettings_CachePath() as string
 end function
 
 function AppSettings_ParseWrapper(raw as string) as object
+    if raw = "" then return { rev: -1, settings: invalid }
     parsed = ParseJson(raw)
     if parsed = invalid then return { rev: -1, settings: invalid }
     if parsed.settings <> invalid then
@@ -22,7 +23,10 @@ function AppSettings_BestWrapper() as object
     regRaw = ""
     s = CreateObject("roRegistrySection", "scuttle_settings")
     if s.Exists("json") then regRaw = s.Read("json")
-    fileRaw = ReadAsciiFile(AppSettings_CachePath())
+    fileRaw = ""
+    if MatchFiles("cachefs:/", "scuttle_settings.json").Count() > 0
+        fileRaw = ReadAsciiFile(AppSettings_CachePath())
+    end if
     reg = AppSettings_ParseWrapper(regRaw)
     fil = AppSettings_ParseWrapper(fileRaw)
     if fil.settings <> invalid and (reg.settings = invalid or fil.rev >= reg.rev) then return fil
@@ -40,6 +44,8 @@ function AppSettings_Load() as object
         cycleScope: "single"
         lastServerId: ""
         lastGridIdx: 0
+        launchCount: 0
+        hintsSeen: {}
     }
     stored = AppSettings_BestWrapper().settings
     if stored <> invalid then settings.Append(stored)
