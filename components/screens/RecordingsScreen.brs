@@ -15,6 +15,7 @@ sub init()
 end sub
 
 sub onShown()
+    Hints_Show("browseDetails", "Browsing tips", "OK opens an entry's snapshot and details. Left/Right move between camera, day and hour lists.")
     if not m.loaded
         m.loaded = true
         content = CreateObject("roSGNode", "ContentNode")
@@ -109,35 +110,36 @@ end function
 sub onHourSelect()
     d = m.summary[m.dayIdx]
     if d.hours = invalid then return
-    tz = CreateObject("roDeviceInfo").GetTimeZone()
-    ' day: "2026-07-29" -> yearMonth "2026-07", dd "29"
-    parts = d.day.Split("-")
-    if parts.Count() <> 3 then return
-    ym = parts[0] + "-" + parts[1]
-    dd = parts[2]
-    playlist = []
-    ' hours list may be newest-first; play selected hour then chronologically later hours
-    hours = []
-    for each h in d.hours
-        hours.Push(pad2(h.hour))
-    end for
-    hours.Sort()
-    selected = pad2(d.hours[m.hourList.itemSelected].hour)
-    startAt = 0
-    for i = 0 to hours.Count() - 1
-        if hours[i] = selected then startAt = i
-    end for
+    h = d.hours[m.hourList.itemSelected]
+    hr = HourToInt(h.hour)
+    ' local wall time -> epoch: parse day+hour as if UTC, then remove the
+    ' device's UTC offset
+    probe = CreateObject("roDateTime")
+    utcNow = probe.AsSeconds()
+    probe.ToLocalTime()
+    offset = probe.AsSeconds() - utcNow
+    parser = CreateObject("roDateTime")
+    parser.FromISO8601String(d.day + "T" + pad2(hr) + ":00:00")
+    hourStart& = parser.AsSeconds()
+    hourStart& = hourStart& - offset
+    snapTs& = hourStart& + 1800
+    now& = utcNow
+    if snapTs& > now& - 120 then snapTs& = now& - 120
+    if snapTs& < hourStart& then snapTs& = hourStart& + 30
     srv = ServerStore_GetById(m.top.server.id)
     if srv = invalid then srv = m.top.server
-    for i = startAt to hours.Count() - 1
-        url = Frigate_VodHourUrl(srv, ym, dd, hours[i], m.camera, tz)
-        playlist.Push({ url: url, title: m.camera + " — " + d.day + " " + hourLabel(hours[i]), format: "hls" })
-    end for
-    player = CreateObject("roSGNode", "VodPlayerScreen")
-    player.server = srv
-    player.playlist = playlist
-    player.startIndex = 0
-    m.top.GetScene().CallFunc("pushScreen", player)
+    lines = []
+    lines.Push("Camera: " + m.camera)
+    lines.Push("Hour: " + d.day + "  " + hourLabel(hr))
+    if h.duration <> invalid then lines.Push("Recorded: " + StrI(Int(h.duration / 60)).Trim() + " min")
+    if h.events <> invalid then lines.Push("Events: " + StrI(HourToInt(h.events)).Trim())
+    lines.Push("Snapshot from mid-hour")
+    detail = CreateObject("roSGNode", "DetailScreen")
+    detail.server = srv
+    detail.titleText = m.camera + " — " + d.day + " " + hourLabel(hr)
+    detail.imagePaths = ["/api/" + m.camera + "/recordings/" + snapTs&.ToStr() + "/snapshot.jpg"]
+    detail.infoLines = lines
+    m.top.GetScene().CallFunc("pushScreen", detail)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean

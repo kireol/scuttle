@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="DetailScreen" extends="Group">
+    <interface>
+        <field id="closeMe" type="boolean" value="false" />
+        <field id="wasShown" type="boolean" value="false" alwaysNotify="true" />
+        <field id="server" type="assocarray" />
+        <!-- API image paths to try in order (first that downloads wins) -->
+        <field id="imagePaths" type="array" />
+        <field id="titleText" type="string" value="" />
+        <!-- one string per info row shown beside the image -->
+        <field id="infoLines" type="array" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/screens/DetailScreen.brs" />
+    <script type="text/brightscript" uri="pkg:/source/FrigateUrls.brs" />
+    <children>
+        <Rectangle id="bg" width="1920" height="1080" color="0x101418FF" />
+        <Label id="title" translation="[100, 50]" color="0xE0E6EAFF"
+               font="font:LargeBoldSystemFont" width="1720" />
+        <Rectangle id="stillFrame" translation="[100, 140]" width="1280" height="720"
+                   color="0x1A2026FF" />
+        <Poster id="still" translation="[100, 140]" width="1280" height="720"
+                loadWidth="1280" loadHeight="720" loadDisplayMode="scaleToFit" />
+        <Label id="info" translation="[1420, 150]" color="0xC7D0D6FF" width="420"
+               wrap="true" maxLines="20" lineSpacing="14" />
+        <Label id="status" translation="[100, 900]" color="0x8A959CFF" text="" width="1720" />
+        <Label id="hint" translation="[100, 990]" color="0x5A646CFF"
+               text="Back: return to list" />
+    </children>
+</component>

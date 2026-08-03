@@ -17,6 +17,7 @@ sub onShown()
         fetchItems()
     end if
     m.list.SetFocus(true)
+    Hints_Show("browseDetails", "Browsing tips", "OK opens an entry's snapshot and details. Press * to switch between alerts and detections.")
 end sub
 
 sub fetchItems()
@@ -114,25 +115,42 @@ end sub
 
 sub onSelect()
     item = m.items[m.list.itemSelected]
-    print "[review] select idx="; m.list.itemSelected; " item: "; FormatJson(item)
-    endTs = item.end_time
-    if endTs = invalid then endTs = item.start_time + 60
-    ' Pad the range: alerts can be 1-2s long while Frigate's VOD segments run
-    ' ~12s, so an unpadded window is often an empty playlist that Roku kills
-    ' with "zero length playlist". Padding also gives useful context.
-    startTs = item.start_time - 10
-    endTs = endTs + 15
-    if endTs - startTs < 40 then endTs = startTs + 40
     srv = ServerStore_GetById(m.top.server.id)
     if srv = invalid then srv = m.top.server
-    ' Frigate_VodRangeUrl keeps LongInteger precision; StrI(Int(epoch)) mangles
-    ' epochs through 32-bit float
-    url = Frigate_VodRangeUrl(srv, item.camera, startTs, endTs)
-    player = CreateObject("roSGNode", "VodPlayerScreen")
-    player.server = srv
-    player.playlist = [{ url: url, title: item.camera + " — " + TimeUtil_FormatEpoch(item.start_time), format: "hls" }]
-    player.startIndex = 0
-    m.top.GetScene().CallFunc("pushScreen", player)
+    labels = ""
+    if item.data <> invalid and item.data.objects <> invalid
+        for each obj in item.data.objects
+            if labels <> "" then labels = labels + ", "
+            labels = labels + obj
+        end for
+    end if
+    zones = ""
+    if item.data <> invalid and item.data.zones <> invalid
+        for each z in item.data.zones
+            if zones <> "" then zones = zones + ", "
+            zones = zones + z
+        end for
+    end if
+    endTs = item.end_time
+    if endTs = invalid then endTs = item.start_time
+    lines = []
+    lines.Push("Type: " + m.severity)
+    if labels <> "" then lines.Push("Objects: " + labels)
+    if zones <> "" then lines.Push("Zones: " + zones)
+    lines.Push("Start: " + TimeUtil_FormatEpoch(item.start_time))
+    if endTs > item.start_time then lines.Push("Duration: " + StrI(Int(endTs - item.start_time)).Trim() + "s")
+    imgs = []
+    if item.data <> invalid and item.data.detections <> invalid and item.data.detections.Count() > 0
+        evId = item.data.detections[0]
+        imgs.Push("/api/events/" + evId + "/snapshot.jpg?bbox=1")
+        imgs.Push("/api/events/" + evId + "/thumbnail.jpg")
+    end if
+    detail = CreateObject("roSGNode", "DetailScreen")
+    detail.server = srv
+    detail.titleText = item.camera + " — " + TimeUtil_FormatEpoch(item.start_time)
+    detail.imagePaths = imgs
+    detail.infoLines = lines
+    m.top.GetScene().CallFunc("pushScreen", detail)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
