@@ -79,10 +79,14 @@ A few limits of the Roku platform shape how the app works, and are worth underst
 
 Short version: see [INSTALL.md](INSTALL.md).
 
-1. Enable developer mode on your Roku (Home 3x, Up 2x, Right, Left, Right, Left, Right on the
+1. Install [MediaMTX](https://github.com/bluenviron/mediamtx) on your Frigate server, next to
+   Frigate, using the `mediamtx.yml` from the *Live video reliability* section below. Roku's
+   player can't use go2rtc's own HLS, so this is what makes live video work; the app
+   auto-detects it on port 8888.
+2. Enable developer mode on your Roku (Home 3x, Up 2x, Right, Left, Right, Left, Right on the
    remote, then follow the on-screen instructions to set a device password and note the Roku's
    IP address).
-2. Copy the environment template and fill in your Roku's details:
+3. Copy the environment template and fill in your Roku's details:
 
    ```bash
    cp .env.example .env
@@ -95,7 +99,7 @@ Short version: see [INSTALL.md](INSTALL.md).
    ROKU_DEV_PASSWORD=yourdevpassword
    ```
 
-3. Deploy:
+4. Deploy:
 
    ```bash
    ./deploy.sh
