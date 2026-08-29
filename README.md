@@ -1,4 +1,4 @@
-# Frigate for Roku
+# Scuttle for Roku
 
 A native Roku SceneGraph channel for [Frigate NVR](https://frigate.video) 0.14+. It connects
 directly to one or more Frigate servers over their HTTP APIs and go2rtc restream ports — there
@@ -6,7 +6,7 @@ is no cloud service, companion app, or third-party backend involved.
 
 ## What it is
 
-Frigate for Roku gives you:
+Scuttle for Roku gives you:
 
 - A **home screen** per configured server: a tab per server, a menu (Review / Explore /
   Recordings / Settings), and a grid of tiles — one per enabled camera — each showing a
