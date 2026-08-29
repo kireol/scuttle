@@ -1,15 +1,36 @@
 # Install (TL;DR)
 
 **You need:** a Roku on the same network as your Frigate server, a computer with `git`, `zip`,
-and `curl` (macOS/Linux have these; on Windows use WSL or Git Bash), and Frigate 0.14+ with
-go2rtc.
+and `curl` (macOS/Linux have these; on Windows use WSL or Git Bash), Frigate 0.14+ with
+go2rtc, and MediaMTX running next to Frigate (step 1).
 
-## 1. Put your Roku in developer mode
+## 1. Install MediaMTX on your Frigate server
+
+Roku's video player can't play go2rtc's built-in HLS (it keeps too little playlist window), so
+live video needs a proper HLS packager alongside Frigate. Install
+[MediaMTX](https://github.com/bluenviron/mediamtx) on the same host as Frigate (a binary
+release or the `bluenviron/mediamtx` Docker image) and use this `mediamtx.yml`:
+
+```yaml
+hlsVariant: mpegts
+hlsSegmentCount: 20
+hlsSegmentDuration: 1s
+paths:
+  "~^(.+)$":
+    source: rtsp://127.0.0.1:8554/$G1
+    sourceOnDemand: yes
+```
+
+Make sure port **8888** is reachable from the Roku. The app auto-detects MediaMTX on connect —
+no per-camera setup is needed. See *Live video reliability* in the [README](README.md) for the
+details and codec notes.
+
+## 2. Put your Roku in developer mode
 
 On the remote press: **Home ×3, Up ×2, Right, Left, Right, Left, Right**. Accept the agreement,
 set a dev password, and note the IP address shown on screen.
 
-## 2. Download the app
+## 3. Download the app
 
 ```bash
 git clone https://github.com/kireol/frigate-roku.git
@@ -18,16 +39,16 @@ cd frigate-roku
 
 (Or click **Code → Download ZIP** on GitHub, unzip it, and `cd` into the folder.)
 
-## 3. Tell it where your Roku is
+## 4. Tell it where your Roku is
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and set `ROKU_IP` and `ROKU_DEV_PASSWORD` to the values from step 1. The other
+Edit `.env` and set `ROKU_IP` and `ROKU_DEV_PASSWORD` to the values from step 2. The other
 lines are optional.
 
-## 4. Install it
+## 5. Install it
 
 ```bash
 ./deploy.sh
@@ -35,7 +56,7 @@ lines are optional.
 
 You should see `Install OK`. The app launches on the Roku automatically.
 
-## 5. Add your Frigate server
+## 6. Add your Frigate server
 
 The first launch opens the server list. Add your Frigate address (e.g.
 `http://192.168.1.10:8971`), pick the auth mode that matches your setup (None / Frigate login /
