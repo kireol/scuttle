@@ -68,7 +68,7 @@ Status: implemented in same session (autonomous run; decisions recorded here)
 - **Save flow**: saving a server now shows a "Server saved" dialog with
   "View <name> cameras" (scene.goToServerId + popToRoot → home lands on
   that server's tab) or "Back to settings" (old closeMe behavior).
-- **Remote diagnosis**: video starts then dies with go2rtc's
+- **Remote-server diagnosis**: video starts then dies with go2rtc's
   "mpr zero length playlist" even on the LAN — the 1s playlist window
   limitation, not purely bandwidth. The tier cascade now lands it in
   snapshot mode quickly, and the overlay makes the state visible.
