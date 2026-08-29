@@ -77,6 +77,8 @@ A few limits of the Roku platform shape how the app works, and are worth underst
 
 ## Install
 
+Short version: see [INSTALL.md](INSTALL.md).
+
 1. Enable developer mode on your Roku (Home 3x, Up 2x, Right, Left, Right, Left, Right on the
    remote, then follow the on-screen instructions to set a device password and note the Roku's
    IP address).
