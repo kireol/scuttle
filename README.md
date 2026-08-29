@@ -4,7 +4,8 @@
 > It has worked well for me and my family. Due to limitations of Roku apps with streaming and
 > go2rtc HLS limitations, certain decisions were made. Streaming often needs to be remuxed or
 > re-encoded, so it may take time for your streams to start (5-15 seconds for me). I spent a lot
-> of time working through this project to get it running as best as possible. Enjoy!
+> of time working through this project to get it running as best as possible. I have not
+> published the app to Roku due to time, so I'm offering the source code here, for free. Enjoy!
 
 A native Roku SceneGraph channel for [Frigate NVR](https://frigate.video) 0.14+. It connects
 directly to one or more Frigate servers over their HTTP APIs and go2rtc restream ports — there
