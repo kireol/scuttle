@@ -45,6 +45,7 @@ sub init()
     m.cameras = []
     m.liveStreams = {}
     m.liveStreamsSub = {}
+    m.liveStreamsScuttle = {}
     m.loadedServerId = ""
     ' land on the server (and roughly the tile) the user last used
     m.pendingServerId = AppSettings_Load().lastServerId
@@ -281,6 +282,7 @@ sub clearCameras()
     m.cameras = []
     m.liveStreams = {}
     m.liveStreamsSub = {}
+    m.liveStreamsScuttle = {}
     m.lastSnapAt = {}
     m.grid.content = CreateObject("roSGNode", "ContentNode")
     m.gridTotalRows = 0
@@ -413,6 +415,7 @@ sub onConfig(ev as object)
     m.cameras = parsed.cameras
     m.liveStreams = parsed.liveStreams
     m.liveStreamsSub = parsed.liveStreamsSub
+    m.liveStreamsScuttle = parsed.liveStreamsScuttle
     m.status.text = ""
     buildGrid()
     startSnapshots()
@@ -681,6 +684,7 @@ sub openPlayer(startIndex as integer, cycleMode as boolean, openInfo = false as 
     end if
     player.liveStreams = m.liveStreams
     player.liveStreamsSub = m.liveStreamsSub
+    player.liveStreamsScuttle = m.liveStreamsScuttle
     player.portFirst = AppSettings_Load().livePortFirst
     player.snapPaths = paths
     m.top.GetScene().CallFunc("pushScreen", player)

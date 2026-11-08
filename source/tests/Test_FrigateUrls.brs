@@ -42,6 +42,28 @@ sub Test_FrigateUrls(r as object)
     T("live names no sub", n.Count() = 2 and n[0] = "cam" and n[1] = "cam_roku", r)
     n = Frigate_LiveStreamNames("cam", "cam")
     T("live names dup sub skipped", n.Count() = 2 and n[0] = "cam" and n[1] = "cam_roku", r)
+    n = Frigate_LiveStreamNames("fy_main", "fy_sub", "fy_sub")
+    T("live names scuttle pick first, deduped", n.Count() = 3 and n[0] = "fy_sub" and n[1] = "fy_main" and n[2] = "fy_roku", r)
+    n = Frigate_LiveStreamNames("dw_main", "dw_sub", "dw_scuttle")
+    T("live names scuttle stream first", n.Count() = 4 and n[0] = "dw_scuttle" and n[1] = "dw_main" and n[2] = "dw_sub" and n[3] = "dw_roku", r)
+
+    T("scuttle by label", Frigate_IsScuttleStream("Scuttle", "fy_sub"), r)
+    T("scuttle by name", Frigate_IsScuttleStream("Roku", "dw_scuttle"), r)
+    T("not scuttle", not Frigate_IsScuttleStream("High Res", "dw_main"), r)
+    p = Frigate_ParseCameraConfig({ cameras: {
+        fy: { live: { streams: { "High Res": "fy_main", "Low Res": "fy_sub", "Scuttle": "fy_sub" } } },
+        dw: { live: { streams: { "High Res": "dw_main", "Roku": "dw_scuttle" } } },
+        plain: { live: { streams: { "High Res": "plain_main", "Low Res": "plain_sub" } } }
+    } })
+    T("parse scuttle label", p.liveStreamsScuttle.fy = "fy_sub" and p.liveStreams.fy = "fy_main" and p.liveStreamsSub.fy = "fy_sub", r)
+    T("parse scuttle name not used as sub", p.liveStreamsScuttle.dw = "dw_scuttle" and p.liveStreams.dw = "dw_main" and not p.liveStreamsSub.DoesExist("dw"), r)
+    T("parse no scuttle", not p.liveStreamsScuttle.DoesExist("plain"), r)
+
+    q = chr(34)
+    T("playlist audio aac", Frigate_PlaylistAudio("#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS=" + q + "avc1.640028,mp4a.40.2" + q + ",RESOLUTION=1920x1080") = "AAC", r)
+    T("playlist audio video-only", Frigate_PlaylistAudio("#EXT-X-STREAM-INF:CODECS=" + q + "hvc1.1.6.L153.a0" + q) = "none", r)
+    T("playlist audio no codecs", Frigate_PlaylistAudio("#EXTM3U" + chr(10) + "seg0.ts") = "", r)
+    T("playlist audio opus", Frigate_PlaylistAudio("CODECS=" + q + "avc1.64001f,opus" + q) = "Opus", r)
 
     ty = Frigate_StreamTypes(["front_main", "front_sub", "back_main", "back_roku"])
     T("stream types known ordered", ty.Count() = 3 and ty[0] = "_main" and ty[1] = "_sub" and ty[2] = "_roku", r)

@@ -50,24 +50,42 @@ function Frigate_LiveHlsUrl(server as object, cameraName as string) as string
     return "http://" + host + ":" + StrI(server.go2rtcPort).Trim() + "/api/stream.m3u8?src=" + Frigate_UrlEncode(cameraName) + "&mp4"
 end function
 
-' Ordered go2rtc stream names for live view: full-res main first (its master
-' answers instantly), the sub as a decode fallback, and the optional
-' "<name>_roku" ffmpeg transcode last — it is capped at 1280 wide and a cold
-' start takes ~8s before the master playlist even responds.
-function Frigate_LiveStreamNames(mainName as string, subName as string) as object
+' Ordered go2rtc stream names for live view: the camera's Scuttle pick first
+' (chosen in Frigate's config, see Frigate_IsScuttleStream), then full-res
+' main (its master answers instantly), the sub as a decode fallback, and the
+' optional "<name>_roku" ffmpeg transcode last — it is capped at 1280 wide and
+' a cold start takes ~8s before the master playlist even responds.
+function Frigate_LiveStreamNames(mainName as string, subName as string, scuttleName = "" as string) as object
     rokuName = mainName + "_roku"
     if Right(mainName, 5) = "_main" then rokuName = Left(mainName, Len(mainName) - 5) + "_roku"
-    names = [mainName]
-    if subName <> "" and subName <> mainName then names.Push(subName)
-    names.Push(rokuName)
+    names = []
+    for each n in [scuttleName, mainName, subName, rokuName]
+        if n <> ""
+            dup = false
+            for each existing in names
+                if existing = n then dup = true
+            end for
+            if not dup then names.Push(n)
+        end if
+    end for
     return names
+end function
+
+' A camera's live.streams entry is its Scuttle pick when labelled "Scuttle"
+' (any case) or when the go2rtc stream is named "<cam>_scuttle" — lets the
+' Frigate config say per camera which stream the Roku should play, e.g.
+'   live: { streams: { Main: front_yard_main, Sub: front_yard_sub, Scuttle: front_yard_sub } }
+function Frigate_IsScuttleStream(label as string, name as string) as boolean
+    if LCase(label) = "scuttle" then return true
+    return Len(name) > 8 and Right(name, 8) = "_scuttle"
 end function
 
 ' Enabled cameras plus go2rtc live-stream picks from a parsed /api/config
 ' response: prefer the main/high-res entry per camera and keep a low-res
-' fallback (panoramic mains exceed Roku's 3840x2160 decoder limit)
+' fallback (panoramic mains exceed Roku's 3840x2160 decoder limit), plus the
+' camera's explicit Scuttle pick when the config names one
 function Frigate_ParseCameraConfig(cfg as object) as object
-    out = { cameras: [], liveStreams: {}, liveStreamsSub: {} }
+    out = { cameras: [], liveStreams: {}, liveStreamsSub: {}, liveStreamsScuttle: {} }
     if cfg = invalid or cfg.cameras = invalid then return out
     for each cam in cfg.cameras
         camCfg = cfg.cameras[cam]
@@ -77,20 +95,27 @@ function Frigate_ParseCameraConfig(cfg as object) as object
         if camCfg <> invalid and camCfg.live <> invalid and camCfg.live.streams <> invalid
             pick = ""
             subPick = ""
+            scuttlePick = ""
             for each label in camCfg.live.streams
                 name = camCfg.live.streams[label]
-                if pick = "" then pick = name
-                if Right(name, 5) = "_main" then pick = name
-                if Right(name, 4) = "_sub" then subPick = name
+                if Frigate_IsScuttleStream(label, name)
+                    ' the Scuttle entry never doubles as the main/sub pick
+                    scuttlePick = name
+                else
+                    if pick = "" then pick = name
+                    if Right(name, 5) = "_main" then pick = name
+                    if Right(name, 4) = "_sub" then subPick = name
+                end if
             end for
             if subPick = "" then
                 for each label in camCfg.live.streams
                     name = camCfg.live.streams[label]
-                    if name <> pick then subPick = name
+                    if name <> pick and not Frigate_IsScuttleStream(label, name) then subPick = name
                 end for
             end if
             if pick <> "" then out.liveStreams[cam] = pick
             if subPick <> "" and subPick <> pick then out.liveStreamsSub[cam] = subPick
+            if scuttlePick <> "" then out.liveStreamsScuttle[cam] = scuttlePick
         end if
     end for
     out.cameras.Sort()
@@ -120,7 +145,7 @@ end function
 
 ' Distinct stream-type suffixes present in a list of go2rtc stream names,
 ' e.g. ["front_main","front_sub","back_main"] -> ["_main","_sub"]. A suffix
-' counts as a type when it is a known convention (_main/_sub/_roku) or
+' counts as a type when it is a known convention (_main/_sub/_roku/_scuttle) or
 ' appears on at least two names (so a lone camera called "front_door"
 ' doesn't invent a "_door" type). Known types come first, in quality order.
 function Frigate_StreamTypes(streamNames as object) as object
@@ -140,10 +165,10 @@ function Frigate_StreamTypes(streamNames as object) as object
         end if
     end for
     types = []
-    for each k in ["_main", "_sub", "_roku"]
+    for each k in ["_main", "_sub", "_roku", "_scuttle"]
         if counts.DoesExist(k) then types.Push(k)
     end for
-    known = { "_main": true, "_sub": true, "_roku": true }
+    known = { "_main": true, "_sub": true, "_roku": true, "_scuttle": true }
     others = []
     for each suffix in counts
         if not known.DoesExist(suffix) and counts[suffix] >= 2 then others.Push(suffix)
@@ -160,7 +185,7 @@ end function
 ' name just gets the suffix appended ("cam" + "_sub" -> "cam_sub").
 function Frigate_StreamNameForType(mainName as string, streamType as string) as string
     base = mainName
-    for each suffix in ["_main", "_sub", "_roku"]
+    for each suffix in ["_main", "_sub", "_roku", "_scuttle"]
         if Len(base) > Len(suffix) and Right(base, Len(suffix)) = suffix
             base = Left(base, Len(base) - Len(suffix))
             exit for
@@ -192,6 +217,32 @@ function Frigate_PlaylistEntries(body as string) as object
         if l <> "" and Left(l, 1) <> "#" then entries.Push(l)
     end for
     return entries
+end function
+
+' Audio a master playlist advertises, from its first CODECS="..." list:
+' "AAC", "HE-AAC", "AC-3", "E-AC-3", "Opus", "MP3", or the raw codec id;
+' "none" when CODECS lists only video; "" when the playlist has no CODECS
+' (unknown — e.g. a bare media playlist)
+function Frigate_PlaylistAudio(body as string) as string
+    p = Instr(1, body, "CODECS=" + chr(34))
+    if p = 0 then return ""
+    rest = Mid(body, p + 8)
+    q = Instr(1, rest, chr(34))
+    if q = 0 then return ""
+    for each c in Left(rest, q - 1).Split(",")
+        id = LCase(c.Trim())
+        if id = "mp4a.40.2" then return "AAC"
+        if id = "mp4a.40.5" or id = "mp4a.40.29" then return "HE-AAC"
+        if id = "mp4a.40.34" or id = "mp4a.6b" then return "MP3"
+        if Left(id, 4) = "mp4a" then return "AAC"
+        if id = "ac-3" then return "AC-3"
+        if id = "ec-3" then return "E-AC-3"
+        if id = "opus" then return "Opus"
+        if id <> "" and Left(id, 4) <> "avc1" and Left(id, 4) <> "avc3" and Left(id, 4) <> "hvc1" and Left(id, 4) <> "hev1"
+            return c.Trim()
+        end if
+    end for
+    return "none"
 end function
 
 ' Directory of a playlist URL, for resolving relative entries: query and

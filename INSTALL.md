@@ -21,9 +21,14 @@ paths:
     sourceOnDemand: yes
 ```
 
-Make sure port **8888** is reachable from the Roku. The app auto-detects MediaMTX on connect —
-no per-camera setup is needed. See *Live video reliability* in the [README](README.md) for the
-details and codec notes.
+If MediaMTX runs in Docker while Frigate runs natively on the host, `127.0.0.1` is the container
+itself — use `source: rtsp://host.docker.internal:8554/$G1` instead.
+
+Make sure port **8888** is reachable from the Roku. The app auto-detects MediaMTX on connect.
+MediaMTX's mpegts output is H.264-only, so HEVC cameras (and cameras with PCMU/PCMA audio) need
+an H.264 + AAC restream, and panoramic cameras need their sub stream. Tell the app which stream
+each camera should use with a `Scuttle` entry in its `live.streams` — see *Choosing each camera's
+Roku stream* in the [README](README.md), along with *Live video reliability* for the codec notes.
 
 ## 2. Put your Roku in developer mode
 

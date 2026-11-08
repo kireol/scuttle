@@ -9,6 +9,8 @@
         <field id="snapPaths" type="array" />
         <field id="liveStreams" type="assocarray" />
         <field id="liveStreamsSub" type="assocarray" />
+        <!-- per-camera Scuttle pick from Frigate live.streams (Frigate_IsScuttleStream) -->
+        <field id="liveStreamsScuttle" type="assocarray" />
         <field id="portFirst" type="boolean" value="true" />
         <field id="cycleMode" type="boolean" value="false" />
         <field id="openInfo" type="boolean" value="false" />

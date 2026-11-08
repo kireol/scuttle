@@ -32,6 +32,8 @@ sub init()
     m.playUrl = ""
     ' advertised feed resolution, parsed from the master playlist
     m.streamRes = ""
+    ' audio the master playlist advertises (Frigate_PlaylistAudio)
+    m.streamAudio = ""
     ' next-camera snapshot prefetch for seamless cycle hops
     m.prefetch = invalid
     m.prefetchTask = invalid
@@ -118,7 +120,7 @@ end function
 
 sub onWatchdog()
     if m.video.state = "playing" then return
-    print "[live] watchdog: no playback after 10s on "; currentUrl()
+    print "[live] watchdog: no playback after "; m.watchdog.duration; "s on "; currentUrl()
     advanceAttempt()
 end sub
 
@@ -270,6 +272,7 @@ sub onTourConfig(ev as object)
     m.top.cameras = cams
     m.top.liveStreams = parsed.liveStreams
     m.top.liveStreamsSub = parsed.liveStreamsSub
+    m.top.liveStreamsScuttle = parsed.liveStreamsScuttle
     m.top.snapPaths = []
     m.serverTier = 0
     m.serverSnapshot = false
@@ -564,10 +567,12 @@ sub playCurrent()
     m.video.control = "stop"
     m.masterTries = 0
     fetchMaster()
-    ' MediaMTX starts its go2rtc pull on demand — a cold ffmpeg chain needs
-    ' ~10s before the playlist exists, so give that route a longer leash
+    ' MediaMTX starts its go2rtc pull on demand, only answers the master once
+    ' it has whole segments (cut on keyframes), and warmup then waits for 3 of
+    ' them: ~11-13s cold for a 2s-GOP _scuttle transcode, ~15s for a camera's
+    ' own 4s-GOP stream — past the old 15s cap, so that route gets 30s
     if isMtxUrl(currentUrl())
-        m.watchdog.duration = 15
+        m.watchdog.duration = 30
     else
         m.watchdog.duration = 10
     end if
@@ -630,6 +635,7 @@ sub onMaster(ev as object)
     ' remember the advertised resolution (e.g. RESOLUTION=1280x720) for the
     ' info overlay; go2rtc masters omit it, MediaMTX/Frigate include it
     m.streamRes = ""
+    m.streamAudio = Frigate_PlaylistAudio(out.body)
     p = Instr(1, out.body, "RESOLUTION=")
     if p > 0
         i = p + 11
@@ -780,8 +786,13 @@ sub buildTiers(cam as string)
     main = cam
     streams = m.top.liveStreams
     if streams <> invalid and streams.DoesExist(cam) then main = streams[cam]
+    scuttleName = ""
+    scuttles = m.top.liveStreamsScuttle
+    if scuttles <> invalid and scuttles.DoesExist(cam) then scuttleName = scuttles[cam]
+    ' precedence: per-camera override (the * overlay) > the camera's Scuttle
+    ' pick from the Frigate config > the server's stream type > auto
     pref = m.top.server.streamType
-    ' a per-camera override (set from the * overlay) beats the server default
+    if scuttleName <> "" then pref = "auto"
     override = CamStream_Get(m.top.server.id, cam)
     if override <> "" then pref = override
     if pref <> invalid and pref <> "" and pref <> "auto"
@@ -790,7 +801,7 @@ sub buildTiers(cam as string)
         subName = ""
         subs = m.top.liveStreamsSub
         if subs <> invalid and subs.DoesExist(cam) then subName = subs[cam]
-        names = Frigate_LiveStreamNames(main, subName)
+        names = Frigate_LiveStreamNames(main, subName, scuttleName)
     end if
     host = Frigate_HostFromUrl(m.top.server.baseUrl)
     rawBase = "http://" + host + ":" + StrI(m.top.server.go2rtcPort).Trim() + "/api/stream.m3u8?src="
@@ -805,9 +816,10 @@ sub buildTiers(cam as string)
     ' Cloudflare-fronted servers: the raw port is blackholed (connections
     ' hang, costing a full watchdog cycle each), so don't even try it
     useRaw = m.top.portFirst and m.top.server.cfProxied <> true
-    if useMtx
+    if useMtx and scuttleName = ""
         ' via MediaMTX prefer the h264 _roku restream: HEVC mains stall (huge
-        ' GOP segments, PCMU audio that fMP4 can't carry); _roku is built for this
+        ' GOP segments, PCMU audio that fMP4 can't carry); _roku is built for this.
+        ' A Scuttle pick is the config's explicit choice, so it stays first.
         reordered = []
         for each n in names
             if Right(n, 5) = "_roku" then reordered.Push(n)
@@ -989,8 +1001,11 @@ sub cycleCamOverride()
     subName = ""
     subs = m.top.liveStreamsSub
     if subs <> invalid and subs.DoesExist(cam) then subName = subs[cam]
+    scuttleName = ""
+    scuttles = m.top.liveStreamsScuttle
+    if scuttles <> invalid and scuttles.DoesExist(cam) then scuttleName = scuttles[cam]
     options = ["auto"]
-    options.Append(Frigate_StreamTypes(Frigate_LiveStreamNames(main, subName)))
+    options.Append(Frigate_StreamTypes(Frigate_LiveStreamNames(main, subName, scuttleName)))
     cur = CamStream_Get(m.top.server.id, cam)
     if cur = "" then cur = "auto"
     idx = 0
@@ -1097,6 +1112,22 @@ sub updateInfoPanel()
             resTxt = m.streamRes
         end if
         if resTxt <> "" then txt = txt + nl + "Resolution: " + resTxt
+        ' what the stream offers (playlist CODECS) vs what Roku is decoding —
+        ' tells a quiet scene apart from a stream with no audio at all
+        offered = "unknown"
+        if m.streamAudio = "none"
+            offered = "no audio track in stream"
+        else if m.streamAudio <> ""
+            offered = m.streamAudio
+        end if
+        decoding = ""
+        if m.video.audioFormat <> invalid then decoding = m.video.audioFormat
+        if decoding = "" or LCase(decoding) = "none"
+            if m.video.state = "playing" then decoding = "none" else decoding = ""
+        end if
+        audioTxt = "Audio: " + offered
+        if decoding <> "" then audioTxt = audioTxt + "  (Roku decoding: " + decoding + ")"
+        txt = txt + nl + audioTxt
         if seg <> invalid and seg.segBitrateBps <> invalid and seg.segBitrateBps > 0
             txt = txt + nl + "Stream bitrate: " + fmtBitrate(seg.segBitrateBps)
         end if

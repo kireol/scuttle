@@ -209,13 +209,16 @@ hlsSegmentCount: 20      # ~40s of runway — Roku loses the live edge on less
 hlsSegmentDuration: 1s
 paths:
   "~^(.+)$":
-    source: rtsp://127.0.0.1:8554/$G1
+    source: rtsp://127.0.0.1:8554/$G1   # MediaMTX in Docker with Frigate native on the
+                                        # host: rtsp://host.docker.internal:8554/$G1
     sourceOnDemand: yes
 ```
 
-Caveat: HEVC camera mains may not play over TS (Roku's HEVC-in-TS support
-is spotty) — the h264 `_roku` restreams are the reliable route and carry
-the audio. No `-ar` resampling is needed with mpegts.
+Caveat: MediaMTX's mpegts muxer accepts **H.264 only** — it refuses HEVC
+streams ("the MPEG-TS variant of HLS supports H264 video only"), so HEVC
+cameras need an H.264 + AAC restream to play through it. Name that restream
+per camera with a `Scuttle` entry (next section). No `-ar` resampling is
+needed with mpegts.
 
 MediaMTX then serves `http://<host>:8888/<stream>/index.m3u8`, which
 Roku's player handles. **The app auto-detects MediaMTX**: on every connect it
@@ -231,5 +234,58 @@ paths:
     sourceOnDemand: yes
 ```
 
-Confirmed working end-to-end (Aug 2026): Roku plays HEVC camera mains via
+Confirmed working end-to-end (Aug 2026): Roku plays camera streams via
 MediaMTX's ~15s playlist window, where go2rtc's own HLS always failed.
+
+## Choosing each camera's Roku stream (the `Scuttle` entry)
+
+By default the live player tries each camera's main stream, then its sub,
+then an optional `<cam>_roku` restream. That guess fails for cameras whose
+main the Roku can't play — panoramic mains wider than the decoder's
+3840x2160, G.711 (PCMU/PCMA) audio, or HEVC through MediaMTX. Instead, tell
+the app which stream to use, per camera, in the Frigate config: add an entry
+labelled **`Scuttle`** to the camera's `live.streams`, or name a go2rtc
+stream `<cam>_scuttle`. The app tries that stream first, falling back to
+main / sub / `_roku` as before:
+
+```yaml
+go2rtc:
+  ffmpeg:
+    # H.264 for Roku: VideoToolbox (macOS) without go2rtc's level 4.1 cap, and
+    # a keyframe every 2s. go2rtc's own `#hardware` asks for level 4.1, which
+    # VideoToolbox rejects above ~1080p (-12902); its `-g 50` makes 10s HLS
+    # segments on 5fps cameras, far too slow for the Roku to start.
+    scuttle_h264: "-c:v h264_videotoolbox -bf 0 -profile:v high -realtime 1 -force_key_frames expr:gte(t,n_forced*2)"
+  streams:
+    driveway_main: rtsp://.../stream1          # HEVC + PCMU audio
+    driveway_scuttle: ffmpeg:driveway_main#video=scuttle_h264#width=1920#audio=aac
+
+cameras:
+  Driveway:
+    live:
+      streams:
+        High Res: driveway_main
+        Low Res: driveway_sub
+        Scuttle: driveway_scuttle    # HEVC/G.711 main: H.264 + AAC restream
+  Front_yard:
+    live:
+      streams:
+        High Res: front_yard_main
+        Low Res: front_yard_sub
+        Scuttle: front_yard_sub      # 7680x2160 main: use the sub as-is
+```
+
+Pick per camera: an H.264 + AAC main that fits 3840x2160 needs nothing new
+(`Scuttle: <cam>_main`); an oversized main with a usable sub points at the
+sub; HEVC or G.711 cameras get a `_scuttle` restream as above (it only runs
+while someone is watching). On other hardware swap `h264_videotoolbox` for
+`libx264 -preset superfast -tune zerolatency` or your platform's encoder.
+Frigate strips `exec:` sources unless arbitrary exec is enabled, so define
+the encoder this way rather than with `exec:`.
+
+Precedence: a per-camera override picked with **\*** in the live view wins,
+then the `Scuttle` entry, then the server's *Stream type* setting. The live
+view's **Up** panel shows the stream and route in use, and an **Audio** line:
+what the stream advertises (`AAC`, `no audio track in stream`, ...) and what
+the Roku is actually decoding — so a quiet scene can be told apart from a
+stream with no audio.
